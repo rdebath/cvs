@@ -9,14 +9,7 @@
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
-    $Header$
-*/
+    GNU General Public License for more details.  */
 
 /* This 'implementation' is conjectured from the use of this functions in
    the RCS and BASH distributions.  Of course these functions don't do too
@@ -94,13 +87,16 @@ getgrnam (char *name)
 char *
 getlogin ()
 {
+  /* This is how a windows user would override their login name. */
+  if (!login)
+    login = lookup_env (login_strings);
+
+  /* In the absence of user override, ask the operating system. */
   if (!login)
      login = win32getlogin();
 
-  if (!login)			/* have we been called before? */
-    login = lookup_env (login_strings);
-
-  if (!login)			/* have we been successful? */
+  /* If all else fails, fall back on Old Faithful. */
+  if (!login)
     login = anonymous;
 
   return login;
@@ -187,7 +183,7 @@ lookup_env (char *table[])
     return (char *) 0;
 
   len = strcspn (ptr, " \n\t\n\r");	/* any WS? 	  */
-  if (!(entry = malloc (len + 1)))
+  if (!(entry = xmalloc (len + 1)))
     {
       fprintf (stderr, "Out of memory.\nStop.");
       exit (-1);

@@ -2,48 +2,90 @@
 
 /* Stuff shared with the server.  */
 extern char *mode_to_string PROTO((mode_t));
-extern int change_mode PROTO((char *, char *));
+extern int change_mode PROTO((char *, char *, int));
 
 extern int gzip_level;
-extern int filter_through_gzip PROTO((int, int, int, pid_t *));
-extern int filter_through_gunzip PROTO((int, int, pid_t *));
+extern int file_gzip_level;
+
+#if defined (CLIENT_SUPPORT) || defined (SERVER_SUPPORT)
+
+/* Whether the connection should be encrypted.  */
+extern int cvsencrypt;
+
+/* Whether the connection should use per-packet authentication.  */
+extern int cvsauthenticate;
+
+#ifdef __STDC__
+struct buffer;
+#endif
+
+# ifdef ENCRYPTION
+
+#   ifdef HAVE_KERBEROS
+
+/* We can't declare the arguments without including krb.h, and I don't
+   want to do that in every file.  */
+extern struct buffer *krb_encrypt_buffer_initialize ();
+
+#   endif /* HAVE_KERBEROS */
+
+#   ifdef HAVE_GSSAPI
+
+/* Set this to turn on GSSAPI encryption.  */
+extern int cvs_gssapi_encrypt;
+
+#   endif /* HAVE_GSSAPI */
+
+# endif /* ENCRYPTION */
+
+# ifdef HAVE_GSSAPI
+
+/* We can't declare the arguments without including gssapi.h, and I
+   don't want to do that in every file.  */
+extern struct buffer *cvs_gssapi_wrap_buffer_initialize ();
+
+# endif /* HAVE_GSSAPI */
+
+#endif /* defined (CLIENT_SUPPORT) || defined (SERVER_SUPPORT) */
 
 #ifdef CLIENT_SUPPORT
 /*
- * Functions to perform CVS commands via the protocol.  argc and argv
- * are the arguments and the return value is the exit status (zero success
- * nonzero failure).
+ * Flag variable for seeing whether the server has been started yet.
+ * As of this writing, only edit.c:notify_check() uses it.
  */
-extern int client_commit PROTO((int argc, char **argv));
-extern int client_update PROTO((int argc, char **argv));
-extern int client_checkout PROTO((int argc, char **argv));
-extern int client_diff PROTO((int argc, char **argv));
-extern int client_log PROTO((int argc, char **argv));
-extern int client_add PROTO((int argc, char **argv));
-extern int client_remove PROTO((int argc, char **argv));
-extern int client_status PROTO((int argc, char **argv));
-extern int client_rdiff PROTO((int argc, char **argv));
-extern int client_tag PROTO((int argc, char **argv));
-extern int client_rtag PROTO((int argc, char **argv));
-extern int client_import PROTO((int argc, char **argv));
-extern int client_admin PROTO((int argc, char **argv));
-extern int client_export PROTO((int argc, char **argv));
-extern int client_history PROTO((int argc, char **argv));
-extern int client_release PROTO((int argc, char **argv));
-
-/*
- * Flag variable for seeing whether common code is running as a client
- * or to do a local operation.
- */
-extern int client_active;
+extern int server_started;
 
 /* Is the -P option to checkout or update specified?  */
 extern int client_prune_dirs;
 
-/* Stream to write to the server.  */
-extern FILE *to_server;
-/* Stream to read from the server.  */
-extern FILE *from_server;
+# ifdef AUTH_CLIENT_SUPPORT
+extern int use_authenticating_server;
+void connect_to_pserver PROTO ((cvsroot_t *,
+				struct buffer **,
+				struct buffer **,
+				int, int ));
+#   ifndef CVS_AUTH_PORT
+#     define CVS_AUTH_PORT 2401
+#   endif /* CVS_AUTH_PORT */
+# endif /* AUTH_CLIENT_SUPPORT */
+
+# if HAVE_KERBEROS
+#   ifndef CVS_PORT
+#     define CVS_PORT 1999
+#   endif
+# endif /* HAVE_KERBEROS */
+
+# if defined (AUTH_SERVER_SUPPORT) || (defined (SERVER_SUPPORT) && defined (HAVE_GSSAPI))
+extern void pserver_authenticate_connection PROTO ((void));
+# endif
+
+# if defined (SERVER_SUPPORT) && defined (HAVE_KERBEROS)
+extern void kserver_authenticate_connection PROTO ((void));
+# endif
+
+/* Talking to the server. */
+void send_to_server PROTO((char *str, size_t len));
+void read_from_server PROTO((char *buf, size_t len));
 
 /* Internal functions that handle client communication to server, etc.  */
 int supported_request PROTO ((char *));
@@ -60,26 +102,26 @@ start_server PROTO((void));
 
 /* Send the names of all the argument files to the server.  */
 void
-send_file_names PROTO((int argc, char **argv));
+send_file_names PROTO((int argc, char **argv, unsigned int flags));
+
+/* Flags for send_file_names.  */
+/* Expand wild cards?  */
+# define SEND_EXPAND_WILD 1
 
 /*
  * Send Repository, Modified and Entry.  argc and argv contain only
  * the files to operate on (or empty for everything), not options.
- * local is nonzero if we should not recurse (-l option).  Also sends
- * Argument lines for argc and argv, so should be called after options
- * are sent.
+ * local is nonzero if we should not recurse (-l option).
  */
 void
-send_files PROTO((int argc, char **argv, int local, int aflag));
+send_files PROTO((int argc, char **argv, int local, int aflag,
+		  unsigned int flags));
 
-/*
- * Like send_files but never send "Unchanged"--just send the contents of the
- * file in that case.  This is used to fix it if you import a directory which
- * happens to have CVS directories (yes it is obscure but the testsuite tests
- * it).
- */
-void
-send_files_contents PROTO((int argc, char **argv, int local, int aflag));
+/* Flags for send_files.  */
+# define SEND_BUILD_DIRS 1
+# define SEND_FORCE 2
+# define SEND_NO_CONTENTS 4
+# define BACKUP_MODIFIED_FILES 8
 
 /* Send an argument to the remote server.  */
 void
@@ -88,6 +130,8 @@ send_arg PROTO((char *string));
 /* Send a string of single-char options to the remote server, one by one.  */
 void
 send_option_string PROTO((char *string));
+
+extern void send_a_repository PROTO ((char *, char *, char *));
 
 #endif /* CLIENT_SUPPORT */
 
@@ -106,6 +150,8 @@ struct response
      * Function to carry out the response.  ARGS is the text of the
      * command after name and, if present, a single space, have been
      * stripped off.  The function can scribble into ARGS if it wants.
+     * Note that although LEN is given, ARGS is also guaranteed to be
+     * '\0' terminated.
      */
     void (*func) PROTO((char *args, int len));
 
@@ -148,16 +194,20 @@ extern struct response responses[];
 
 extern void client_senddate PROTO((const char *date));
 extern void client_expand_modules PROTO((int argc, char **argv, int local));
-extern void client_send_expansions PROTO((int local));
+extern void client_send_expansions PROTO((int local, char *where,
+					  int build_dirs));
 extern void client_nonexpanded_setup PROTO((void));
+
+extern void send_init_command PROTO ((void));
 
 extern char **failed_patches;
 extern int failed_patches_count;
-extern char toplevel_wd[];
+extern char *toplevel_wd;
 extern void client_import_setup PROTO((char *repository));
 extern int client_process_import_file
     PROTO((char *message, char *vfile, char *vtag,
-	   int targc, char *targv[], char *repository));
+	   int targc, char *targv[], char *repository, int all_files_binary,
+	   int modtime));
 extern void client_import_done PROTO((void));
-
+extern void client_notify PROTO((char *, char *, char *, int, char *));
 #endif /* CLIENT_SUPPORT */

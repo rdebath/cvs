@@ -1,5 +1,5 @@
 /* xgetwd.c -- return current directory with unlimited length
-   Copyright (C) 1992 Free Software Foundation, Inc.
+   Copyright (C) 1992, 1997 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -9,13 +9,9 @@
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+   GNU General Public License for more details.  */
 
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
-
-/* Written by David MacKenzie <djm@gnu.ai.mit.edu>.  */
+/* Derived from xgetcwd.c in e.g. the GNU sh-utils.  */
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -30,20 +26,11 @@ extern int errno;
 #endif
 #include <sys/types.h>
 
-#ifndef HAVE_GETWD
-char *getwd ();
-#define GETWD(buf, max) getwd (buf)
-#else
-char *getcwd ();
-#define GETWD(buf, max) getcwd (buf, max)
-#endif
-
 /* Amount by which to increase buffer size when allocating more space. */
 #define PATH_INCR 32
 
 char *xmalloc ();
 char *xrealloc ();
-void free ();
 
 /* Return the current directory, newly allocated, arbitrarily long.
    Return NULL and set errno on error. */
@@ -62,7 +49,7 @@ xgetwd ()
   cwd = xmalloc (path_max);
 
   errno = 0;
-  while ((ret = GETWD (cwd, path_max)) == NULL && errno == ERANGE)
+  while ((ret = getcwd (cwd, path_max)) == NULL && errno == ERANGE)
     {
       path_max += PATH_INCR;
       cwd = xrealloc (cwd, path_max);

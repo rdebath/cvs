@@ -1,5 +1,5 @@
 /* Shared definitions for GNU DIFF
-   Copyright (C) 1988, 89, 91, 92, 93 Free Software Foundation, Inc.
+   Copyright (C) 1988, 89, 91, 92, 93, 97, 1998 Free Software Foundation, Inc.
 
 This file is part of GNU DIFF.
 
@@ -13,13 +13,13 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with GNU DIFF; see the file COPYING.  If not, write to
-the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
+*/
 
 #include "system.h"
 #include <stdio.h>
+#include <setjmp.h>
 #include "regex.h"
+#include "diffrun.h"
 
 #define TAB_WIDTH 8
 
@@ -30,6 +30,9 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #else
 #define EXTERN
 #endif
+
+/* The callbacks to use for output.  */
+EXTERN const struct diff_callbacks *callbacks;
 
 enum output_style {
   /* Default output style.  */
@@ -176,7 +179,11 @@ EXTERN char *	switch_string;
 EXTERN int	heuristic;
 
 /* Name of program the user invoked (for error messages).  */
-EXTERN char *program_name;
+EXTERN char *diff_program_name;
+
+/* Jump buffer for nonlocal exits. */
+EXTERN jmp_buf diff_abort_buf;
+#define DIFF_ABORT(retval) longjmp(diff_abort_buf, retval)
 
 /* The result of comparison is an "edit script": a chain of `struct change'.
    Each `struct change' represents one place where some lines are deleted
@@ -321,9 +328,16 @@ struct change *find_reverse_change PARAMS((struct change *));
 void analyze_hunk PARAMS((struct change *, int *, int *, int *, int *, int *, int *));
 void begin_output PARAMS((void));
 void debug_script PARAMS((struct change *));
-void error PARAMS((char const *, char const *, char const *));
+void diff_error PARAMS((char const *, char const *, char const *));
 void fatal PARAMS((char const *));
 void finish_output PARAMS((void));
+void write_output PARAMS((char const *, size_t));
+void printf_output PARAMS((char const *, ...))
+#if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 6)
+     __attribute__ ((__format__ (__printf__, 1, 2)))
+#endif
+     ;
+void flush_output PARAMS((void));
 void message PARAMS((char const *, char const *, char const *));
 void message5 PARAMS((char const *, char const *, char const *, char const *, char const *));
 void output_1_line PARAMS((char const *, char const *, char const *, char const *));
@@ -337,4 +351,4 @@ void setup_output PARAMS((char const *, char const *, int));
 void translate_range PARAMS((struct file_data const *, int, int, int *, int *));
 
 /* version.c */
-extern char const version_string[];
+extern char const diff_version_string[];

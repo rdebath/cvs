@@ -10,11 +10,7 @@
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
+   GNU General Public License for more details.  */
 
 #include "cvs.h"
 
@@ -25,19 +21,6 @@
 #include <errno.h>
 #include <io.h>
 #include <fcntl.h>
-
-#ifdef HAVE_VPRINTF
-#if defined (USE_PROTOTYPES) ? USE_PROTOTYPES : defined (__STDC__)
-#include <stdarg.h>
-#define VA_START(args, lastarg) va_start(args, lastarg)
-#else
-#include <varargs.h>
-#define VA_START(args, lastarg) va_start(args)
-#endif
-#else
-#define va_alist a1, a2, a3, a4, a5, a6, a7, a8
-#define va_dcl char *a1, *a2, *a3, *a4, *a5, *a6, *a7, *a8;
-#endif
 
 static void run_add_arg PROTO((const char *s));
 static void run_init_prog PROTO((void));
@@ -57,29 +40,17 @@ extern char *strtok ();
  * The execvp() syscall will be used, so that the PATH is searched correctly.
  * File redirections can be performed in the call to run_exec().
  */
-static char *run_prog;
 static char **run_argv;
 static int run_argc;
 static int run_argc_allocated;
 
-/* VARARGS */
-#if defined (HAVE_VPRINTF) && (defined (USE_PROTOTYPES) ? USE_PROTOTYPES : defined (__STDC__))
-void 
-run_setup (const char *fmt,...)
-#else
-void 
-run_setup (fmt, va_alist)
-    char *fmt;
-    va_dcl
-#endif
+void
+run_setup (const char *prog)
 {
-#ifdef HAVE_VPRINTF
-    va_list args;
-#endif
     char *cp;
     int i;
 
-    run_init_prog ();
+    char *run_prog;
 
     /* clean out any malloc'ed values from run_argv */
     for (i = 0; i < run_argc; i++)
@@ -92,18 +63,13 @@ run_setup (fmt, va_alist)
     }
     run_argc = 0;
 
-    /* process the varargs into run_prog */
-#ifdef HAVE_VPRINTF
-    VA_START (args, fmt);
-    (void) vsprintf (run_prog, fmt, args);
-    va_end (args);
-#else
-    (void) sprintf (run_prog, fmt, a1, a2, a3, a4, a5, a6, a7, a8);
-#endif
+    run_prog = xstrdup (prog);
 
     /* put each word into run_argv, allocating it as we go */
     for (cp = strtok (run_prog, " \t"); cp; cp = strtok ((char *) NULL, " \t"))
 	run_add_arg (cp);
+
+    free (run_prog);
 }
 
 void
@@ -113,50 +79,32 @@ run_arg (s)
     run_add_arg (s);
 }
 
-/* VARARGS */
-#if defined (HAVE_VPRINTF) && (defined (USE_PROTOTYPES) ? USE_PROTOTYPES : defined (__STDC__))
-void 
-run_args (const char *fmt,...)
-#else
-void 
-run_args (fmt, va_alist)
-    char *fmt;
-    va_dcl
-#endif
-{
-#ifdef HAVE_VPRINTF
-    va_list args;
-#endif
-
-    run_init_prog ();
-
-    /* process the varargs into run_prog */
-#ifdef HAVE_VPRINTF
-    VA_START (args, fmt);
-    (void) vsprintf (run_prog, fmt, args);
-    va_end (args);
-#else
-    (void) sprintf (run_prog, fmt, a1, a2, a3, a4, a5, a6, a7, a8);
-#endif
-
-    /* and add the (single) argument to the run_argv list */
-    run_add_arg (run_prog);
-}
-
 /* Return a malloc'd copy of s, with double quotes around it.  */
 static char *
 quote (const char *s)
 {
-    size_t s_len = strlen (s);
-    char *copy = xmalloc (s_len + 3);
-    char *scan = copy;
+    size_t s_len = 0;
+    char *copy = NULL;
+    char *scan = (char *) s;
 
+    /* scan string for extra quotes ... */
+    while (*scan)
+	if ('"' == *scan++)
+	    s_len += 2;   /* one extra for the quote character */
+	else
+	    s_len++;
+    /* allocate length + byte for ending zero + for double quotes around */
+    scan = copy = xmalloc(s_len + 3);
     *scan++ = '"';
-    strcpy (scan, s);
-    scan += s_len;
+    while (*s)
+    {
+	if ('"' == *s)
+	    *scan++ = '\\';
+	*scan++ = *s++;
+    }
+    /* ending quote and closing zero */
     *scan++ = '"';
     *scan++ = '\0';
-
     return copy;
 }
 
@@ -181,20 +129,11 @@ run_add_arg (s)
 	run_argv[run_argc] = (char *) 0;	/* not post-incremented on purpose! */
 }
 
-static void
-run_init_prog ()
-{
-    /* make sure that run_prog is allocated once */
-    if (run_prog == (char *) 0)
-	run_prog = xmalloc (10 * 1024);	/* 10K of args for _setup and _arg */
-}
-
-
 int
 run_exec (stin, stout, sterr, flags)
-    char *stin;
-    char *stout;
-    char *sterr;
+    const char *stin;
+    const char *stout;
+    const char *sterr;
     int flags;
 {
     int shin, shout, sherr;
@@ -211,6 +150,14 @@ run_exec (stin, stout, sterr, flags)
 	run_print (stderr);
 	(void) fprintf (stderr, ")\n");
     }
+
+    /* Flush standard output and standard error, or otherwise we end
+       up with strange interleavings of stuff called from CYGWIN
+       vs. CMD.  */
+
+    fflush (stderr);
+    fflush (stdout);
+
     if (noexec && (flags & RUN_REALLY) == 0) /* if in noexec mode */
 	return (0);
 
@@ -307,6 +254,13 @@ run_exec (stin, stout, sterr, flags)
       (void) close( saerr);
     }
 
+    /* Flush standard output and standard error, or otherwise we end
+       up with strange interleavings of stuff called from CYGWIN
+       vs. CMD.  */
+
+    fflush (stderr);
+    fflush (stdout);
+
     /* Recognize the return code for an interrupted subprocess.  */
     if (rval == CONTROL_C_EXIT)
         return 2;
@@ -327,7 +281,6 @@ run_exec (stin, stout, sterr, flags)
 	errno = rerrno;
     return (status);
 }
-
 
 void
 run_print (fp)
@@ -359,16 +312,16 @@ requote (const char *cmd)
 }
 
 FILE *
-Popen (cmd, mode)
+run_popen (cmd, mode)
     const char *cmd;
     const char *mode;
 {
     if (trace)
 #ifdef SERVER_SUPPORT
-	(void) fprintf (stderr, "%c-> Popen(%s,%s)\n",
+	(void) fprintf (stderr, "%c-> run_popen(%s,%s)\n",
 			(server_active) ? 'S' : ' ', cmd, mode);
 #else
-	(void) fprintf (stderr, "-> Popen(%s,%s)\n", cmd, mode);
+	(void) fprintf (stderr, "-> run_popen(%s,%s)\n", cmd, mode);
 #endif
     if (noexec)
 	return (NULL);
@@ -377,7 +330,22 @@ Popen (cmd, mode)
        double quotes.  */
     {
         char *requoted = requote (cmd);
+	/* Save and restore our file descriptors to work around
+	   apparent bugs in _popen.  We are perhaps better off using
+	   the win32 functions instead of _popen.  */
+	int old_stdin = dup (STDIN_FILENO);
+	int old_stdout = dup (STDOUT_FILENO);
+	int old_stderr = dup (STDERR_FILENO);
+
 	FILE *result = popen (requoted, mode);
+
+	dup2 (old_stdin, STDIN_FILENO);
+	dup2 (old_stdout, STDOUT_FILENO);
+	dup2 (old_stderr, STDERR_FILENO);
+	close (old_stdin);
+	close (old_stdout);
+	close (old_stderr);
+
 	free (requoted);
 	return result;
     }
@@ -578,12 +546,13 @@ build_command (char **argv)
 		else
 		    len++;
 	    }
+	    len++;  /* for the space or the '\0'  */
 	}
-        len++;  /* for the space or the '\0'  */
     }
 
     {
-        char *command = (char *) malloc (len);
+	/* The + 10 is in case len is 0.  */
+        char *command = (char *) malloc (len + 10);
 	int i;
 	char *p;
 
@@ -594,6 +563,7 @@ build_command (char **argv)
 	}
 
 	p = command;
+        *p = '\0';
 	/* copy each element of argv to command, putting each command
 	   in double quotes, and backslashing any quotes that appear
 	   within an argument.  */
@@ -611,7 +581,8 @@ build_command (char **argv)
 	    *p++ = '"';
 	    *p++ = ' ';
 	}
-	p[-1] = '\0';
+	if (p > command)
+	    p[-1] = '\0';
 
         return command;
     }
@@ -664,6 +635,9 @@ piped_child (char **argv, int *to, int *from)
 /*
  * dir = 0 : main proc writes to new proc, which writes to oldfd
  * dir = 1 : main proc reads from new proc, which reads from oldfd
+ *
+ * Returns: a file descriptor.  On failure (e.g., the exec fails),
+ * then filter_stream_through_program() complains and dies.
  */
 
 int
@@ -681,19 +655,19 @@ filter_stream_through_program (oldfd, dir, prog, pidp)
 
     /* Get the OS handle associated with oldfd, to be passed to the child.  */
     if ((oldfd_handle = (HANDLE) _get_osfhandle (oldfd)) < 0)
-	return -1;
+	error (1, errno, "cannot _get_osfhandle");
 
     if (dir)
     {
         /* insert child before parent, pipe goes child->parent.  */
 	if (my_pipe (pipe, inherit_writing) == -1)
-	    return -1;
+	    error (1, errno, "cannot my_pipe");
 	if ((command = build_command (prog)) == NULL)
-	    return -1;
+	    error (1, errno, "cannot build_command");
 	child = start_child (command, oldfd_handle, pipe[1]);
 	free (command);
 	if (child == (int) INVALID_HANDLE_VALUE)
-	    return -1;
+	    error (1, errno, "cannot start_child");
 	close (oldfd);
 	CloseHandle (pipe[1]);
 	newfd_handle = pipe[0];
@@ -702,22 +676,23 @@ filter_stream_through_program (oldfd, dir, prog, pidp)
     {
         /* insert child after parent, pipe goes parent->child.  */
 	if (my_pipe (pipe, inherit_reading) == -1)
-	    return -1;
+	    error (1, errno, "cannot my_pipe");
 	if ((command = build_command (prog)) == NULL)
-	    return -1;
+	    error (1, errno, "cannot build_command");
 	child = start_child (command, pipe[0], oldfd_handle);
 	free (command);
 	if (child == (int) INVALID_HANDLE_VALUE)
-	    return -1;
+	    error (1, errno, "cannot start_child");
 	close (oldfd);
 	CloseHandle (pipe[0]);
 	newfd_handle = pipe[1];
     }
 
     if ((newfd = _open_osfhandle ((long) newfd_handle, _O_BINARY)) == -1)
-        return -1;
+        error (1, errno, "cannot _open_osfhandle");
 
-    *pidp = child;
+    if (pidp)
+	*pidp = child;
     return newfd;    
 }
 

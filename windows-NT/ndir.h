@@ -9,14 +9,7 @@
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
-    $Header$
- */
+    GNU General Public License for more details.  */
 
 /* Everything non trivial in this code is taken from: @(#)msd_dir.c 1.4
    87/11/06.  A public domain implementation of BSD directory routines
@@ -27,7 +20,10 @@
 
 #define	rewinddir(dirp)	seekdir(dirp, 0L)
 
-#define	MAXNAMLEN	12
+/* 255 is said to be big enough for Windows NT.  The more elegant
+   solution would be declaring d_name as one byte long and allocating
+   it to the actual size needed.  */
+#define	MAXNAMLEN	255
 
 struct direct
 {
@@ -53,7 +49,7 @@ typedef struct _dirdesc
 
 extern void seekdir (DIR *, long);
 extern long telldir (DIR *);
-extern DIR *opendir (char *);
+extern DIR *opendir (const char *);
 extern void closedir (DIR *);
 extern struct direct *readdir (DIR *);
 

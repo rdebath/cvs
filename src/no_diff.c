@@ -3,7 +3,7 @@
  * Copyright (c) 1989-1992, Brian Berliner
  * 
  * You may distribute under the terms of the GNU General Public License as
- * specified in the README file that comes with the CVS 1.4 kit.
+ * specified in the README file that comes with the CVS source distribution.
  * 
  * No Difference
  * 
@@ -16,111 +16,78 @@
 
 #include "cvs.h"
 
-#ifndef lint
-static const char rcsid[] = "$CVSid: @(#)no_diff.c 1.39 94/10/07 $";
-USE(rcsid)
-#endif
-
 int
-No_Difference (file, vers, entries, repository, update_dir)
-    char *file;
+No_Difference (finfo, vers)
+    struct file_info *finfo;
     Vers_TS *vers;
-    List *entries;
-    char *repository;
-    char *update_dir;
 {
     Node *p;
-    char tmp[L_tmpnam+1];
     int ret;
     char *ts, *options;
     int retcode = 0;
     char *tocvsPath;
 
+    /* If ts_user is "Is-modified", we can only conclude the files are
+       different (since we don't have the file's contents).  */
+    if (vers->ts_user != NULL
+	&& strcmp (vers->ts_user, "Is-modified") == 0)
+	return -1;
+
     if (!vers->srcfile || !vers->srcfile->path)
 	return (-1);			/* different since we couldn't tell */
+
+#ifdef PRESERVE_PERMISSIONS_SUPPORT
+    /* If special files are in use, then any mismatch of file metadata
+       information also means that the files should be considered different. */
+    if (preserve_perms && special_file_mismatch (finfo, vers->vn_user, NULL))
+	return 1;
+#endif
 
     if (vers->entdata && vers->entdata->options)
 	options = xstrdup (vers->entdata->options);
     else
 	options = xstrdup ("");
 
-    run_setup ("%s%s -p -q -r%s %s", Rcsbin, RCS_CO,
-	       vers->vn_user ? vers->vn_user : "", options);
-    run_arg (vers->srcfile->path);
-    if ((retcode = run_exec (RUN_TTY, tmpnam (tmp), RUN_TTY, RUN_REALLY)) == 0)
+    tocvsPath = wrap_tocvs_process_file (finfo->file);
+    retcode = RCS_cmp_file (vers->srcfile, vers->vn_user, options,
+			    tocvsPath == NULL ? finfo->file : tocvsPath);
+    if (retcode == 0)
     {
-	if (!iswritable (file))		/* fix the modes as a side effect */
-	    xchmod (file, 1);
-
-	tocvsPath = wrap_tocvs_process_file (file);
-
-	/* do the byte by byte compare */
-	if (xcmp (tocvsPath == NULL ? file : tocvsPath, tmp) == 0)
-	{
-	    if (cvswrite == FALSE)	/* fix the modes as a side effect */
-		xchmod (file, 0);
-
-	    /* no difference was found, so fix the entries file */
-	    ts = time_stamp (file);
-	    Register (entries, file,
-		      vers->vn_user ? vers->vn_user : vers->vn_rcs, ts,
-		      options, vers->tag, vers->date, (char *) 0);
+	/* no difference was found, so fix the entries file */
+	ts = time_stamp (finfo->file);
+	Register (finfo->entries, finfo->file,
+		  vers->vn_user ? vers->vn_user : vers->vn_rcs, ts,
+		  options, vers->tag, vers->date, (char *) 0);
 #ifdef SERVER_SUPPORT
-	    if (server_active)
-	    {
-		/* We need to update the entries line on the client side.  */
-		server_update_entries
-		  (file, update_dir, repository, SERVER_UPDATED);
-	    }
-#endif
-	    free (ts);
-
-	    /* update the entdata pointer in the vers_ts structure */
-	    p = findnode (entries, file);
-	    vers->entdata = (Entnode *) p->data;
-
-	    ret = 0;
-	}
-	else
-	    ret = 1;			/* files were really different */
-        if (tocvsPath)
+	if (server_active)
 	{
-	    /* Need to call unlink myself because the noexec variable
-	     * has been set to 1.  */
-	    if (trace)
-		(void) fprintf (stderr, "%c-> unlink (%s)\n",
-#ifdef SERVER_SUPPORT
-				(server_active) ? 'S' : ' ',
-#else
-				' ',
-#endif
-				tocvsPath);
-	    if (unlink (tocvsPath) < 0)
-		error (0, errno, "could not remove %s", tocvsPath);
+	    /* We need to update the entries line on the client side.  */
+	    server_update_entries
+	      (finfo->file, finfo->update_dir, finfo->repository, SERVER_UPDATED);
 	}
+#endif
+	free (ts);
+
+	/* update the entdata pointer in the vers_ts structure */
+	p = findnode (finfo->entries, finfo->file);
+	vers->entdata = (Entnode *) p->data;
+
+	ret = 0;
     }
     else
+	ret = 1;			/* files were really different */
+
+    if (tocvsPath)
     {
-	if (update_dir[0] == '\0')
-	    error (0, retcode == -1 ? errno : 0,
-		   "could not check out revision %s of %s",
-		   vers->vn_user, file);
-	else
-	    error (0, retcode == -1 ? errno : 0,
-		   "could not check out revision %s of %s/%s",
-		   vers->vn_user, update_dir, file);
-	ret = -1;			/* different since we couldn't tell */
+	/* Need to call unlink myself because the noexec variable
+	 * has been set to 1.  */
+	if (trace)
+	    (void) fprintf (stderr, "%s-> unlink (%s)\n",
+			    CLIENT_SERVER_STR, tocvsPath);
+	if ( CVS_UNLINK (tocvsPath) < 0)
+	    error (0, errno, "could not remove %s", tocvsPath);
     }
 
-    if (trace)
-#ifdef SERVER_SUPPORT
-	(void) fprintf (stderr, "%c-> unlink2 (%s)\n",
-			(server_active) ? 'S' : ' ', tmp);
-#else
-	(void) fprintf (stderr, "-> unlink (%s)\n", tmp);
-#endif
-    if (unlink (tmp) < 0)
-	error (0, errno, "could not remove %s", tmp);
     free (options);
     return (ret);
 }

@@ -10,41 +10,22 @@
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
+   GNU General Public License for more details.  */
 
 #include "cvs.h"
 
-#ifdef _MINIX
-#undef	POSIX		/* Minix 1.6 doesn't support POSIX.1 sigaction yet */
-#endif
-
-#ifdef HAVE_VPRINTF
-#if defined (USE_PROTOTYPES) ? USE_PROTOTYPES : defined (__STDC__)
-#include <stdarg.h>
-#define VA_START(args, lastarg) va_start(args, lastarg)
-#else
-#include <varargs.h>
-#define VA_START(args, lastarg) va_start(args)
-#endif
-#else
-#define va_alist a1, a2, a3, a4, a5, a6, a7, a8
-#define va_dcl char *a1, *a2, *a3, *a4, *a5, *a6, *a7, *a8;
+#ifndef HAVE_UNISTD_H
+extern int execvp PROTO((char *file, char **argv));
 #endif
 
 static void run_add_arg PROTO((const char *s));
-static void run_init_prog PROTO((void));
 
 extern char *strtok ();
 
 /*
- * To exec a program under CVS, first call run_setup() to setup any initial
- * arguments.  The options to run_setup are essentially like printf(). The
- * arguments will be parsed into whitespace separated words and added to the
- * global run_argv list.
+ * To exec a program under CVS, first call run_setup() to setup initial
+ * arguments.  The argument to run_setup will be parsed into whitespace 
+ * separated words and added to the global run_argv list.
  * 
  * Then, optionally call run_arg() for each additional argument that you'd like
  * to pass to the executed program.
@@ -53,29 +34,18 @@ extern char *strtok ();
  * The execvp() syscall will be used, so that the PATH is searched correctly.
  * File redirections can be performed in the call to run_exec().
  */
-static char *run_prog;
 static char **run_argv;
 static int run_argc;
 static int run_argc_allocated;
 
 /* VARARGS */
-#if defined (HAVE_VPRINTF) && (defined (USE_PROTOTYPES) ? USE_PROTOTYPES : defined (__STDC__))
 void 
-run_setup (const char *fmt,...)
-#else
-void 
-run_setup (fmt, va_alist)
-    char *fmt;
-    va_dcl
-#endif
+run_setup (prog)
+    const char *prog;
 {
-#ifdef HAVE_VPRINTF
-    va_list args;
-#endif
     char *cp;
     int i;
-
-    run_init_prog ();
+    char *run_prog;
 
     /* clean out any malloc'ed values from run_argv */
     for (i = 0; i < run_argc; i++)
@@ -88,18 +58,12 @@ run_setup (fmt, va_alist)
     }
     run_argc = 0;
 
-    /* process the varargs into run_prog */
-#ifdef HAVE_VPRINTF
-    VA_START (args, fmt);
-    (void) vsprintf (run_prog, fmt, args);
-    va_end (args);
-#else
-    (void) sprintf (run_prog, fmt, a1, a2, a3, a4, a5, a6, a7, a8);
-#endif
+    run_prog = xstrdup (prog);
 
     /* put each word into run_argv, allocating it as we go */
     for (cp = strtok (run_prog, " \t"); cp; cp = strtok ((char *) NULL, " \t"))
 	run_add_arg (cp);
+    free (run_prog);
 }
 
 void
@@ -107,36 +71,6 @@ run_arg (s)
     const char *s;
 {
     run_add_arg (s);
-}
-
-/* VARARGS */
-#if defined (HAVE_VPRINTF) && (defined (USE_PROTOTYPES) ? USE_PROTOTYPES : defined (__STDC__))
-void 
-run_args (const char *fmt,...)
-#else
-void 
-run_args (fmt, va_alist)
-    char *fmt;
-    va_dcl
-#endif
-{
-#ifdef HAVE_VPRINTF
-    va_list args;
-#endif
-
-    run_init_prog ();
-
-    /* process the varargs into run_prog */
-#ifdef HAVE_VPRINTF
-    VA_START (args, fmt);
-    (void) vsprintf (run_prog, fmt, args);
-    va_end (args);
-#else
-    (void) sprintf (run_prog, fmt, a1, a2, a3, a4, a5, a6, a7, a8);
-#endif
-
-    /* and add the (single) argument to the run_argv list */
-    run_add_arg (run_prog);
 }
 
 static void
@@ -157,19 +91,11 @@ run_add_arg (s)
 	run_argv[run_argc] = (char *) 0;	/* not post-incremented on purpose! */
 }
 
-static void
-run_init_prog ()
-{
-    /* make sure that run_prog is allocated once */
-    if (run_prog == (char *) 0)
-	run_prog = xmalloc (10 * 1024);	/* 10K of args for _setup and _arg */
-}
-
 int
 run_exec (stin, stout, sterr, flags)
-    char *stin;
-    char *stout;
-    char *sterr;
+    const char *stin;
+    const char *stout;
+    const char *sterr;
     int flags;
 {
     int shin, shout, sherr;
@@ -179,7 +105,7 @@ run_exec (stin, stout, sterr, flags)
     int rerrno = 0;
     int pid, w;
 
-#ifdef POSIX
+#ifdef POSIX_SIGNALS
     sigset_t sigset_mask, sigset_omask;
     struct sigaction act, iact, qact;
 
@@ -196,12 +122,11 @@ run_exec (stin, stout, sterr, flags)
     if (trace)
     {
 #ifdef SERVER_SUPPORT
-	(void) fprintf (stderr, "%c-> system(", (server_active) ? 'S' : ' ');
-#else
-	(void) fprintf (stderr, "-> system(");
+	cvs_outerr (server_active ? "S" : " ", 1);
 #endif
+	cvs_outerr ("-> system(", 0);
 	run_print (stderr);
-	(void) fprintf (stderr, ")\n");
+	cvs_outerr (")\n", 0);
     }
     if (noexec && (flags & RUN_REALLY) == 0)
 	return (0);
@@ -248,7 +173,15 @@ run_exec (stin, stout, sterr, flags)
     fflush (stdout);
     fflush (stderr);
 
-    /* The output files, if any, are now created.  Do the fork and dups */
+    /* The output files, if any, are now created.  Do the fork and dups.
+
+       We use vfork not so much for a performance boost (the
+       performance boost, if any, is modest on most modern unices),
+       but for the sake of systems without a memory management unit,
+       which find it difficult or impossible to implement fork at all
+       (e.g. Amiga).  The other solution is spawn (see
+       windows-NT/run.c).  */
+
 #ifdef HAVE_VFORK
     pid = vfork ();
 #else
@@ -274,6 +207,18 @@ run_exec (stin, stout, sterr, flags)
 	    (void) close (sherr);
 	}
 
+#ifdef SETXID_SUPPORT
+	/*
+	** This prevents a user from creating a privileged shell
+	** from the text editor when the SETXID_SUPPORT option is selected.
+	*/
+	if (!strcmp (run_argv[0], Editor) && setegid (getgid ()))
+	{
+	    error (0, errno, "cannot set egid to gid");
+	    _exit (127);
+	}
+#endif
+
 	/* dup'ing is done.  try to run it now */
 	(void) execvp (run_argv[0], run_argv);
 	error (0, errno, "cannot exec %s", run_argv[0]);
@@ -286,7 +231,7 @@ run_exec (stin, stout, sterr, flags)
     }
 
     /* the parent.  Ignore some signals for now */
-#ifdef POSIX
+#ifdef POSIX_SIGNALS
     if (flags & RUN_SIGIGNORE)
     {
 	act.sa_handler = SIG_IGN;
@@ -320,7 +265,7 @@ run_exec (stin, stout, sterr, flags)
 #endif
 
     /* wait for our process to die and munge return status */
-#ifdef POSIX
+#ifdef POSIX_SIGNALS
     while ((w = waitpid (pid, &status, 0)) == -1 && errno == EINTR)
 	;
 #else
@@ -330,11 +275,13 @@ run_exec (stin, stout, sterr, flags)
 	    break;
     }
 #endif
+
     if (w == -1)
     {
 	rc = -1;
 	rerrno = errno;
     }
+#ifndef VMS /* status is return status */
     else if (WIFEXITED (status))
 	rc = WEXITSTATUS (status);
     else if (WIFSIGNALED (status))
@@ -345,9 +292,12 @@ run_exec (stin, stout, sterr, flags)
     }
     else
 	rc = 1;
+#else /* VMS */
+    rc = WEXITSTATUS (status);
+#endif /* VMS */
 
     /* restore the signals */
-#ifdef POSIX
+#ifdef POSIX_SIGNALS
     if (flags & RUN_SIGIGNORE)
     {
 	(void) sigaction (SIGINT, &iact, (struct sigaction *) NULL);
@@ -374,9 +324,19 @@ run_exec (stin, stout, sterr, flags)
   out:
     if (sterr)
 	(void) close (sherr);
+    else
+	/* ensure things are received by the parent in the correct order
+	 * relative to the protocol pipe
+	 */
+	cvs_flusherr();
   out2:
     if (stout)
 	(void) close (shout);
+    else
+	/* ensure things are received by the parent in the correct order
+	 * relative to the protocol pipe
+	 */
+	cvs_flushout();
   out1:
     if (stin)
 	(void) close (shin);
@@ -392,34 +352,49 @@ run_print (fp)
     FILE *fp;
 {
     int i;
+    void (*outfn) PROTO ((const char *, size_t));
+
+    if (fp == stderr)
+	outfn = cvs_outerr;
+    else if (fp == stdout)
+	outfn = cvs_output;
+    else
+    {
+	error (1, 0, "internal error: bad argument to run_print");
+	/* Solely to placate gcc -Wall.
+	   FIXME: it'd be better to use a function named `fatal' that
+	   is known never to return.  Then kludges wouldn't be necessary.  */
+	outfn = NULL;
+    }
 
     for (i = 0; i < run_argc; i++)
     {
-	(void) fprintf (fp, "'%s'", run_argv[i]);
+	(*outfn) ("'", 1);
+	(*outfn) (run_argv[i], 0);
+	(*outfn) ("'", 1);
 	if (i != run_argc - 1)
-	    (void) fprintf (fp, " ");
+	    (*outfn) (" ", 1);
     }
 }
 
+/* Return value is NULL for error, or if noexec was set.  If there was an
+   error, return NULL and I'm not sure whether errno was set (the Red Hat
+   Linux 4.1 popen manpage was kind of vague but discouraging; and the noexec
+   case complicates this even aside from popen behavior).  */
+
 FILE *
-Popen (cmd, mode)
+run_popen (cmd, mode)
     const char *cmd;
     const char *mode;
 {
     if (trace)
-#ifdef SERVER_SUPPORT
-	(void) fprintf (stderr, "%c-> Popen(%s,%s)\n",
-			(server_active) ? 'S' : ' ', cmd, mode);
-#else
-	(void) fprintf (stderr, "-> Popen(%s,%s)\n", cmd, mode);
-#endif
+	(void) fprintf (stderr, "%s-> run_popen(%s,%s)\n",
+			CLIENT_SERVER_STR, cmd, mode);
     if (noexec)
 	return (NULL);
 
     return (popen (cmd, mode));
 }
-
-extern int evecvp PROTO((char *file, char **argv));
 
 int
 piped_child (command, tofdp, fromfdp)
@@ -436,27 +411,38 @@ piped_child (command, tofdp, fromfdp)
     if (pipe (from_child_pipe) < 0)
 	error (1, errno, "cannot create pipe");
 
+#ifdef USE_SETMODE_BINARY
+    setmode (to_child_pipe[0], O_BINARY);
+    setmode (to_child_pipe[1], O_BINARY);
+    setmode (from_child_pipe[0], O_BINARY);
+    setmode (from_child_pipe[1], O_BINARY);
+#endif
+
+#ifdef HAVE_VFORK
+    pid = vfork ();
+#else
     pid = fork ();
+#endif
     if (pid < 0)
 	error (1, errno, "cannot fork");
     if (pid == 0)
     {
 	if (dup2 (to_child_pipe[0], STDIN_FILENO) < 0)
-	    error (1, errno, "cannot dup2");
+	    error (1, errno, "cannot dup2 pipe");
 	if (close (to_child_pipe[1]) < 0)
-	    error (1, errno, "cannot close");
+	    error (1, errno, "cannot close pipe");
 	if (close (from_child_pipe[0]) < 0)
-	    error (1, errno, "cannot close");
+	    error (1, errno, "cannot close pipe");
 	if (dup2 (from_child_pipe[1], STDOUT_FILENO) < 0)
-	    error (1, errno, "cannot dup2");
+	    error (1, errno, "cannot dup2 pipe");
 
 	execvp (command[0], command);
-	error (1, errno, "cannot exec");
+	error (1, errno, "cannot exec %s", command[0]);
     }
     if (close (to_child_pipe[0]) < 0)
-	error (1, errno, "cannot close");
+	error (1, errno, "cannot close pipe");
     if (close (from_child_pipe[1]) < 0)
-	error (1, errno, "cannot close");
+	error (1, errno, "cannot close pipe");
 
     *tofdp = to_child_pipe[1];
     *fromfdp = from_child_pipe[0];
@@ -468,70 +454,8 @@ void
 close_on_exec (fd)
      int fd;
 {
-#if defined (FD_CLOEXEC) && defined (F_SETFD)
-  if (fcntl (fd, F_SETFD, 1))
-    error (1, errno, "can't set close-on-exec flag on %d", fd);
+#ifdef F_SETFD
+    if (fcntl (fd, F_SETFD, 1))
+	error (1, errno, "can't set close-on-exec flag on %d", fd);
 #endif
-}
-
-/*
- * dir = 0 : main proc writes to new proc, which writes to oldfd
- * dir = 1 : main proc reads from new proc, which reads from oldfd
- */
-
-int
-filter_stream_through_program (oldfd, dir, prog, pidp)
-     int oldfd, dir;
-     char **prog;
-     pid_t *pidp;
-{
-    int p[2], newfd;
-    pid_t newpid;
-
-    if (pipe (p))
-	error (1, errno, "cannot create pipe");
-    newpid = fork ();
-    if (pidp)
-	*pidp = newpid;
-    switch (newpid)
-    {
-      case -1:
-	error (1, errno, "cannot fork");
-      case 0:
-	/* child */
-	if (dir)
-	{
-	    /* write to new pipe */
-	    close (p[0]);
-	    dup2 (oldfd, 0);
-	    dup2 (p[1], 1);
-	}
-	else
-	{
-	    /* read from new pipe */
-	    close (p[1]);
-	    dup2 (p[0], 0);
-	    dup2 (oldfd, 1);
-	}
-	/* Should I be blocking some signals here?  */
-	execvp (prog[0], prog);
-	error (1, errno, "couldn't exec %s", prog[0]);
-      default:
-	/* parent */
-	close (oldfd);
-	if (dir)
-	{
-	    /* read from new pipe */
-	    close (p[1]);
-	    newfd = p[0];
-	}
-	else
-	{
-	    /* write to new pipe */
-	    close (p[0]);
-	    newfd = p[1];
-	}
-	close_on_exec (newfd);
-	return newfd;
-    }
 }

@@ -9,11 +9,7 @@
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
+   GNU General Public License for more details.  */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -54,7 +50,7 @@ mkdir (dpath, dmode)
     }
 
   /* If stat fails for a reason other than non-existence, return error. */
-  if (errno != ENOENT)
+  if (! existence_error (errno))
     return -1;
 
   cpid = fork ();

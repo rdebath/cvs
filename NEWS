@@ -1,4 +1,420 @@
-Changes from 1.5 to the present:
+Changes since 1.11.3:
+
+* Some minor changes to allow the code to compile on Windows platforms.
+
+Changes from 1.11.2 to 1.11.3:
+
+* When waiting for another user's lock, the message timestamps are now
+in UTC rather than the server's local time.
+
+* The options.h file is no longer used.  This fixes a bug that occurred when
+1.11.2 was compiled on Windows platforms.
+
+* We've standardized on Automake version 1.6.3 and Autoconf version 2.53.
+They are cleaner, less bug prone, and will hopfully allow me to start updating
+sanity.sh to use Autotest and Autoshell.  Again, this should only really affect
+developers.  See the section of the INSTALL file about using the autotools if
+you are compiling CVS yourself.
+
+Changes from 1.11.1p1 to 1.11.2:
+
+* There is a new feature, enabled by RereadLogAfterVerify in CVSROOT/config,
+which tells CVS to reread the log message after running the verifymsg
+script.  This allows the verifymsg script to reformat or otherwise
+modify the log message.
+
+* The interpretation of revision ranges using :: in "log" and "rlog"
+has changed: a::b now excludes the log message from revision a but
+includes the log message from revision b.  Also, revision ranges that
+cross branch points should now work.
+
+* zlib has been updated to version 1.4.  There is a security advisory
+out in regards to 1.3.  This should fix that problem.
+
+* The "log" and "rlog" commands now have a -S option to suppress the
+header information when no revisions are selected.
+
+* A serious error that allowed read-only users to tag files has been
+corrected.
+
+* The "annotate" command will no longer annotate binary files unless
+you specify the new -F option.
+
+* The "tag" and "rtag" commands will no longer move or delete branch
+tags unless you use the new -B option.  (This prevents accidental
+changes to branch tags that are hard to undo.)
+
+* We've standardized on the 1.5 Automake release for the moment.  Again, this
+should only really affect developers.  See the section of the INSTALL file
+about using the autotools if you are compiling CVS yourself.
+
+Changes from 1.11.1 to 1.11.1p1:
+
+* Read only access was broken - now fixed.
+
+Changes from 1.11 to 1.11.1:
+
+* The "cvs diff" command now accepts the -y/--side=by-side and -T/
+--initial-tab options.  (To use these options with a remote repository,
+both the client and the server must support them.)
+
+* The expansion of the loginfo format string has changed slightly. 
+Previously, the expansion was surrounded by single quotes ('); if a file
+name contained a single quote character, the string would not be parsed
+as a single entity by the Unix shell (and it would not be possible to
+parse it unambiguously).  Now the expansion is surrounded by double
+quotes (") and any embedded dollar signs ($), backticks (`), backslashes
+(\), and double quotes are preceded by a backslash.  This is parsed as a
+single entity by the shell reguardless of content.  This change should
+not be noticable unless you're not using a Unix shell or you have
+embedded the format string inside a double quoted string.
+
+* There was a bug in the diff code which sometimes caused conflicts to
+be flagged which shouldn't have been.  This has been fixed.
+
+* New "cvs rlog" and "cvs rannotate" commands have been added to get log
+messages and annotations without having to have a checked-out copy.
+
+* Exclusive revision ranges have been added to "cvs log" using ::
+(similar to "cvs admin -o").
+
+* The VMS client now accepts wildcards if you're running VMS 7.x.
+
+* ZLIB has been updated to version 1.1.3, the most current version.  This
+includes mostly some optimizations and minor bug fixes.
+
+* The ~/.cvspass file has a slightly modified format.  CVSROOTs are now
+stored in a new canonical form - hostnames are now case insensitive and
+port numbers are always stored in the new format.  Until a new login for
+a particular CVSROOT is performed with the new version of CVS, new and
+old versions of CVS should interoperate invisibly.  After that point, an
+extra login using the old version of CVS may be necessary to continue to
+allow the new and old versions of CVS to interoperate using the same
+~/.cvspass file and CVSROOT. The exception to this rule occurs when the
+CVSROOTs used with the different versions use case insensitively
+different hostnames, for example, "empress", and "empress.2-wit.com".
+
+* A password and a port number may now be specified in CVSROOT for
+pserver connections.  The new format is:
+
+    :pserver:[[user][:password]@]host[:[port]]/path
+
+Note that passwords specified in a checkout command will be saved in the
+clear in the CVS/Root file in each created directory, so this is not
+recommended, except perhaps when accessing anonymous repositories or the
+like.
+
+* The distribution has been converted to use Automake.  This shouldn't
+affect most users except to ease some portability concerns, but if you
+are building from the repository and encounter problems with the
+makefiles, you might try running ./noautomake.sh after a fresh update
+-AC.
+
+Changes from 1.10 to 1.11:
+
+* The "cvs update" command has a new -C option to get clean copies from
+the repository, abandoning any local changes.
+
+* The new "cvs version" command gives a short version message.  If
+the repository is remote, both the client and server versions are
+reported.
+
+* "cvs admin -t" now works correctly in client/server mode.
+
+* The "cvs history" command output format has changed -- the date
+now includes the year and is given is ISO 8601 format (yyyy-mm-dd).
+Also, the new LogHistory option in CVSROOT/config can be used to
+control what information gets recorded in the log file and code has
+been added to record file removals.
+
+* The buggy PreservePermissions code has been disabled.
+
+* Anonymous read-only access can now be done without requiring a
+password.  On the server side, simply give that user (presumably
+`anonymous') an empty password in the CVSROOT/passwd file, and then
+any received password will authenticate successfully.
+
+* There is a new access method :fork: which is similar to :local:
+except that it is implemented via the CVS remote protocol, and thus
+has a somewhat different set of quirks and bugs.
+
+* The -d command line option no longer updates the CVS/Root file.  For
+one thing, the CVS 1.9/1.10 behavior never had updated CVS/Root in
+subdirectories, and for another, it didn't seem that popular in
+general.  So this change restores the CVS 1.8 behavior (which is also
+the CVS 1.9/1.10 behavior if the environment variable
+CVS_IGNORE_REMOTE_ROOT is set; with this change,
+CVS_IGNORE_REMOTE_ROOT no longer has any effect).
+
+* It is now possible for a single CVS command to recurse into several
+CVS roots.  This includes roots which are located on several servers,
+or which are both remote and local.  CVS will make connections to as
+many servers as necessary.
+
+* It is now possible to put the CVS lock files in a directory
+set by the new LockDir option in CVSROOT/config.  The default
+continues to be to put the lock files in the repository itself.
+
+Changes from 1.9 to 1.10:
+
+* A bug was discovered in the -t/-f wrapper support that can cause
+serious data loss.  Because of this (and also the fact that it doesn't
+work at all in client/server mode), the -t/-f wrapper code has been
+disabled until it can be fixed.
+
+* There is a new feature, enabled by TopLevelAdmin in CVSROOT/config,
+which tells CVS to modify the behavior of the "checkout" command.  The
+command now creates a CVS directory at the top level of the new
+working directory, in addition to CVS directories created within
+checked-out directories.  See the Cederqvist for details.
+
+* There is an optional set of features, enabled by PreservePermissions
+in CVSROOT/config, which allow CVS to store unix-specific file
+information such as permissions, file ownership, and links.  See the
+Cederqvist for details.
+
+* One can now authenticate and encrypt using the GSSAPI network
+security interface.  For details see the Cederqvist's description of
+specifying :gserver: in CVSROOT, and the -a global option.
+
+* All access to RCS files is now implemented internally rather than by
+calling RCS programs.  The main user-visible consequence of this is
+that there is no need to worry about making sure that CVS finds the
+correct version of RCS.  The -b global option and the RCSBIN setting
+in CVSROOT/config are still accepted but don't do anything.  The
+$RCSBIN internal variable in administrative files is no longer
+accepted.
+
+* There is a new syntax, "cvs admin -orev1::rev2", which collapses the
+revisions between rev1 and rev2 without deleting rev1 or rev2
+themselves.
+
+* There is a new administrative file CVSROOT/config which allows one
+to specify miscellaneous aspects of CVS configuration.  Currently
+supported here:
+
+  - SystemAuth, allows you to prevent pserver from checking for system
+  usernames/passwords.
+
+For more information see the "config" section of cvs.texinfo.
+
+* When setting up the pserver server, one now must specify the
+allowable CVSROOT directories in inetd.conf.  See the Password
+authentication server section of cvs.texinfo for details.  Note that
+this implies that everyone who is running a pserver server must edit
+inetd.conf when upgrading their CVS.
+
+* The client no longer needs an external patch program (assuming both
+the client and the server have been updated to the new version).
+
+* "cvs admin [options]" will now recurse.  In previous versions of
+CVS, it was an error and one needed to specify "cvs admin [options] ."
+to recurse.  This change brings admin in line with the other CVS
+commands.
+
+* New "logout" command to remove the password for a remote cvs
+repository from the cvspass file.
+
+* Read-only repository access is implemented for the
+password-authenticated server (other access methods are just governed
+by Unix file permissions, since they require login access to the
+repository machine anyway).  See the "Repository" section of
+cvs.texinfo for details, including a discussion of security issues.
+Note that the requirement that read-only users be able to create locks
+and write the history file still applies.
+
+* There is a new administrative file verifymsg which is like editinfo
+but merely validates the message, rather than also getting it from the
+user.  It therefore works with client/server CVS or if one uses the -m
+or -F options to commit.  See the verifymsg section of cvs.texinfo for
+details.
+
+* The %s format formerly accepted in loginfo has been extended to
+formats such as %{sVv}, so that loginfo scripts have access to the
+version numbers being changed.  See the Loginfo section of cvs.texinfo
+for details.
+
+* The postscript documentation (doc/cvs.ps) shipped with CVS is now
+formatted for US letter size instead of A4.  This is not because we
+consider this size "better" than A4, but because we believe that the
+US letter version will print better on A4 paper than the other way
+around.
+
+* The "cvs export" command is now logged in the history file and there
+is a "cvs history -x E" command to select history file entries
+produced by export.
+
+* CVS no longer uses the CVS_PASSWORD environment variable.  Storing
+passwords in cleartext in an environment variable is a security risk,
+especially since (on BSD variants) any user on the system can display
+any process's environment using 'ps'.  Users should use the 'cvs
+login' command instead.
+
+
+Changes from 1.8 to 1.9:
+
+* Windows NT client should now work on Windows 95 as well.
+
+* New option "--help-synonyms" prints a list of all recognized command
+synonyms.
+
+* The "log" command is now implemented internally rather than via the
+RCS "rlog" program.  The main user-visible consequence is that
+symbolic branch names now work (for example "cvs log -rbranch1").
+Also, the date formats accepted by -d have changed.  They previously
+had been a bewildering variety of poorly-documented date formats.  Now
+they are the same as the date formats accepted by the -D options to
+the other CVS commands, which is also a (different) bewildering
+variety of poorly-documented date formats, but at least we are
+consistently bewildering :-).
+
+* Encryption is now supported over a Kerberos client/server
+connection.  The new "-x" global option requests it.  You must
+configure with the --enable-encryption option in order to enable
+encryption.
+
+* The format of the CVS commit message has changed slightly when
+committing changes on a branch.  The tag on which the commit is
+ocurring is now reported correctly in all cases.
+
+* New flag -k in wrappers allows you to specify the keyword expansion
+mode for added files based on their name.  For example, you can
+specify that files whose name matches *.exe are binary by default.
+See the Wrappers section of cvs.texinfo for more details.
+
+* Remote CVS with the "-z" option now uses the zlib library (included
+with CVS) to compress all communication between the client and the
+server, rather than invoking gzip on each file separately.  This means
+that compression is better and there is no need for an external gzip
+program (except to interoperate with older version of CVS).
+
+* The "cvs rlog" command is deprecated and running it will print a
+warning; use the synonymous "cvs log" command instead.  It is
+confusing for rlog to mean the same as log because some other CVS
+commands are in pairs consisting of a plain command which operates on
+a working directory and an "r" command which does not (diff/rdiff;
+tag/rtag).
+
+* "cvs diff" has a bunch of new options, mostly long options.  Most of
+these work only if rcsdiff and diff support them, and are named the
+same as the corresponding options to diff.
+
+* The -q and -Q command options to "cvs diff" were removed (use the
+global options instead).  This brings "cvs diff" into line with the
+rest of the CVS commands.
+
+* The "annotate" command can now be used to annotate a revision other
+than the head revision on the trunk (see the -r, -D, and -f options in
+the annotate node of cvs.texinfo for details).
+
+* The "tag" command has a new option "-c" which checks that all files
+  are not locally modified before tagging.
+
+* The -d command line option now overrides the cvsroot setting stored
+in the CVS/Root file in each working directory, and specifying -d will
+cause CVS/Root to be updated.
+
+* Local (non-client/server) CVS now runs on Windows NT.  See
+windows-NT/README for details.
+
+* The CVSROOT variable specification has changed to support more
+access methods.  In addition to "pserver," "server" (internal rsh
+client), "ext" (external rsh client), "kserver" (kerberos), and
+"local" (local filesystem access) can now be specified.  For more
+details on each method, see cvs.texinfo (there is an index entry for
+:local: and each of the other access methods).
+
+* The "login" command no longer prompts the user for username and
+hostname, since one will have to provide that information via the `-d'
+flag or by setting CVSROOT.
+
+Changes from 1.7 to 1.8:
+
+* New "cvs annotate" command to display the last modification for each
+line of a file, with the revision number, user checking in the
+modification, and date of the modification.  For more information see
+the `annotate' node in cvs.texinfo.
+
+* The cvsinit shell script has been replaced by a cvs init command.
+The cvs init command creates some example administrative files which
+are similar to the files found in the examples directory (and copied
+by cvsinit) in previous releases.
+
+* Added the patterns *.olb *.exe _$* *$ to default ignore list.
+
+* There is now a $USER internal variable for *info files.
+
+* There is no longer a separate `mkmodules' program; the functionality
+is now built into `cvs'.  If upgrading an old repository, it is OK to
+leave in the lines in the modules file which run mkmodules (the
+mkmodules actions will get done twice, but that is harmless); you will
+probably want to remove them once you are no longer using the old CVS.
+
+* One can now specify user variables in *info files via the
+${=varname} syntax; there is a -s global option to set them.  See the
+Variables node in cvs.texinfo for details.
+
+Changes from 1.6 to 1.7:
+
+* The default ignore list has changed slightly: *.obj has been added
+and CVS* has been changed to CVS CVS.adm.
+
+* CVS now supports password authentication when accessing remote
+repositories; this is useful for sites that can't use rsh (because of
+a firewall, for example), and also don't have kerberos.  See node
+"Password authenticated" (in "Remote repositories", in
+doc/cvs.texinfo) for more details.  Note: This feature requires both
+the client and server to be upgraded.
+
+* Using the -kb option to specify binary files now works--most cases
+did not work before.  See the "Binary files" section of
+doc/cvs.texinfo for details.
+
+* New developer communication features.  See the "Watches" section of
+doc/cvs.texinfo for details.
+
+* RCS keyword "Name" supported for "cvs update -r <tag>" and "cvs
+checkout -r <tag>".
+
+* If there is a group whose name matches a compiled in value which
+defaults to "cvsadmin", only members of that group can use "cvs
+admin".  This replaces the CVS_NOADMIN option.
+
+* CVS now sets the modes of files in the repository based on the
+CVSUMASK environment variable or a compiled in value defaulting to
+002.  This way other developers will be able to access the files in
+the repository regardless of the umask of the developer creating them.
+
+* The command names in .cvsrc now match the official name of the
+command, not the one (possibly an alias) by which it was invoked.  If
+you had previously relied on "cvs di" and "cvs diff" using different
+options, instead use a shell function or alias (for example "alias
+cvsdi='cvs diff -u'").  You also can specify global CVS options (like
+"-z") using the command name "cvs".
+
+Changes from 1.5 to 1.6:
+
+* Del updated the man page to include all of the new features
+of CVS 1.6.
+
+* "cvs tag" now supports a "-r | -D" option for tagging an already
+tagged revision / specific revision of a file.
+
+* There is a "taginfo" file in CVSROOT that supports filtering and
+recording of tag operations.
+
+* Long options support added, including --help and --version options.
+
+* "cvs release" no longer cares whether or not the directory being
+released has an entry in the `modules' file.
+
+* The modules file now takes a -e option which is used instead of -o
+for "cvs export".  If your modules file has a -o option which you want
+to be used for "cvs export", change it to specify -e as well as -o.
+
+* "cvs export" now takes a -k option to set RCS keyword expansion.
+This way you can export binary files.  If you want the old behavior,
+you need to specify -kv.
 
 * "cvs update", "cvs rdiff", "cvs checkout", "cvs import", "cvs
 release", "cvs rtag", and "cvs tag" used to take -q and -Q options
@@ -12,7 +428,8 @@ transforms files on their way in and out of cvs (apparently on the
 NeXT there is some particular usefulness in tarring things up in the
 repository).  It also allows you to declare files as merge-by-copy
 which means that instead of trying to merge the file, CVS will merely
-copy the new version.
+copy the new version.  There is a CVSROOT/cvswrappers file and an
+optionsl ~/.cvswrappers file to support this feature.
 
 * You can set CVSROOT to user@host:dir, not just host:dir, if your
 username on the server host is different than on the client host.
@@ -816,5 +1233,3 @@ Mon Nov 19 23:15:11 1990  Brian Berliner  (berliner at prisma.com)
 	1986 version of CVS and making it available to the world.  Dick's
 	version is available on uunet.uu.net in the
 	comp.sources.unix/volume6/cvs directory.
-
-$CVSid: @(#)ChangeLog 1.35 94/10/22 $
