@@ -9,14 +9,7 @@
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
-    $Header$
- */
+    GNU General Public License for more details.  */
 
 /* Everything non trivial in this code is from: @(#)msd_dir.c 1.4
    87/11/06.  A public domain implementation of BSD directory routines
@@ -43,7 +36,7 @@ static void free_dircontents (struct _dircontents *);
 
 
 DIR *
-opendir (char *name)
+opendir (const char *name)
 {
   struct _finddata_t find_buf;
   DIR *dirp;
@@ -56,7 +49,7 @@ opendir (char *name)
     name = "";
   else if (*name)
     {
-      char *s;
+      const char *s;
       int l = strlen (name);
 
       s = name + l - 1;

@@ -2,7 +2,6 @@
 .ds Rv \\$3
 .ds Dt \\$4
 ..
-.Id $Id$
 .TH CVS 1 "\*(Dt"
 .\" Full space in nroff; half space in troff
 .de SP
@@ -24,6 +23,15 @@ cvs \- Concurrent Versions System
 ] [
 .I command_args
 ]
+.SH "NOTE"
+This manpage is a summary of some of the features of
+.B cvs
+but it may no longer be kept up-to-date.  
+For more current and in-depth documentation, please consult the
+Cederqvist manual (via the
+.B info cvs
+command or otherwise,
+as described in the SEE ALSO section of this manpage).
 .SH "DESCRIPTION"
 .IX "revision control system" "\fLcvs\fR"
 .IX  cvs  ""  "\fLcvs\fP \- concurrent versions system"
@@ -31,19 +39,15 @@ cvs \- Concurrent Versions System
 .IX  "release control system"  "cvs command"  ""  "\fLcvs\fP \- concurrent versions system"
 .IX  "source control system"  "cvs command"  ""  "\fLcvs\fP \- concurrent versions system"
 .IX  revisions  "cvs command"  ""  "\fLcvs\fP \- source control"
-.B cvs
-is a front end to the
-.BR rcs ( 1 )
-revision control system which extends
-the notion of revision control from a collection of files in a single
-directory to a hierarchical collection of directories consisting of
-revision controlled files.
-These directories and files can be combined together to form a software
-release.
-.B cvs
-provides the functions necessary to manage these software releases and to
-control the concurrent editing of source files among multiple software
-developers.
+CVS is a version control system, which allows you to keep old versions
+of files (usually source code), keep a log of who, when, and why
+changes occurred, etc., like RCS or SCCS.  Unlike the simpler systems,
+CVS does not just operate on one file at a time or one directory at a
+time, but operates on hierarchical collections of directories
+consisting of version controlled files.  CVS helps to manage releases
+and to control the concurrent editing of source files among multiple
+authors.  CVS allows triggers to enable/log/control various
+operations and works well over a wide area network.
 .SP
 .B cvs
 keeps a single copy of the master sources.
@@ -128,16 +132,28 @@ command).
 There are only two situations where you may omit
 .IR cvs_command :
 .` "cvs \-H"
+or
+.` "cvs --help"
 elicits a list of available commands, and
-.` "cvs \-v "
+.` "cvs \-v"
+or
+.` "cvs --version"
 displays version information on \fBcvs\fP itself.
 .SP
 .SH "CVS OPTIONS"
+As of release 1.6,
+.B cvs
+supports
+.SM GNU
+style long options as well as short options.  Only
+a few long options are currently supported, these are listed in
+brackets after the short options whose functions they duplicate.
+.SP
 Use these options to control the overall
 .B cvs
 program:
 .TP
-.B \-H
+.B \-H [ --help ]
 Display usage information about the specified
 .I cvs_command
 (but do not actually execute the command).  If you don't specify a
@@ -159,7 +175,7 @@ Use
 .I bindir
 as the directory where
 .SM RCS
-programs are located.
+programs are located (CVS 1.9 and older).
 Overrides the setting of the
 .SM RCSBIN
 environment variable.
@@ -169,7 +185,6 @@ This value should be specified as an absolute pathname.
 Use
 .I CVS_root_directory
 as the root directory pathname of the master
-.SM RCS
 source repository.
 Overrides the setting of the
 .SM CVSROOT
@@ -181,10 +196,17 @@ Use
 .I editor
 to enter revision log information.
 Overrides the setting of the
-.SM CVSEDITOR
-and the
+.SM CVSEDITOR\c
+,
+.SM VISUAL\c
+, and
 .SM EDITOR
 environment variables.
+.TP
+.B \-f
+Do not read the
+.B cvs
+startup file (\fI~/.cvsrc\fP).
 .TP
 .B \-l
 Do not log the
@@ -213,7 +235,7 @@ Same effect as if the
 .SM CVSREAD
 environment variable is set.
 .TP
-.B \-v
+.B \-v [ --version ]
 Displays version and copyright information for
 .BR cvs .
 .TP
@@ -222,6 +244,21 @@ Makes new working files read-write (default).
 Overrides the setting of the
 .SM CVSREAD
 environment variable.
+.TP
+.B \-x
+Encrypt all communication between the client and the server.  As of
+this writing, this is only implemented when using a Kerberos
+connection.
+.TP
+\fB\-z\fP \fIcompression\-level\fP
+When transferring files across the network use
+.B gzip
+with compression level \fIcompression\-level\fP to compress and
+de-compress data as it is transferred.  Requires the presence of
+the
+.SM GNU
+.B gzip
+program in the current search path at both ends of the link.
 .SH "USAGE"
 Except when requesting general help with
 .` "cvs \-H",
@@ -237,6 +274,29 @@ However, many options are available across several commands.
 You can display a usage summary for each command by specifying the
 .B \-H
 option with the command.
+.SH "CVS STARTUP FILE"
+Normally, when CVS starts up, it reads the
+.I .cvsrc
+file from the home directory of the user reading it.  This startup
+procedure can be turned off with the
+.B \-f
+flag.
+.SP
+The
+.I .cvsrc
+file lists CVS commands with a list of arguments, one command per
+line.  For example, the following line in \fI.cvsrc\fP:
+.SP
+diff \-c
+.SP
+will mean that the
+.` "cvs diff"
+command will always be passed the \-c option in addition to any
+other options that are specified in the command line (in this case
+it will have the effect of producing context sensitive diffs for
+all executions of
+.` "cvs diff"
+).
 .SH "CVS COMMAND SUMMARY"
 Here are brief descriptions of all the
 .B cvs
@@ -259,7 +319,6 @@ working directory.)
 .TP
 .B admin
 Execute
-.SM RCS
 control functions on the source repository.  (Changes
 repository directly; uses working directory without changing it.)
 .TP
@@ -305,9 +364,13 @@ file; see
 Incorporate a set of updates from off-site into the source repository,
 as a ``vendor branch''.  (Changes repository.)
 .TP
+.B init
+Initialize a repository by adding the CVSROOT subdirectory and some default
+control files. You must use this command or initialize the repository in
+some other way before you can use it.
+.TP
 .B log
 Display
-.SM RCS
 log information.
 (Does not change repository or working directory.)
 .TP
@@ -343,7 +406,8 @@ file.  (Does not change
 repository or working directory.)
 .TP
 .B tag
-Specify a symbolic tag for files in the repository.  Tags the revisions
+Specify a symbolic tag for files in the repository.  By default, tags
+the revisions
 that were last synchronized with your working directory.   (Changes
 repository directly; uses working directory without changing it.)
 .TP
@@ -375,11 +439,8 @@ even with these standard options.
 \fB\-D\fP \fIdate_spec\fP
 Use the most recent revision no later than \fIdate_spec\fP (a single
 argument, date description specifying a date in the
-past).  A wide variety of date formats are supported by the underlying
-.SM RCS
-facilities, similar to those described in
-.BR co ( 1 ),
-but not exactly the same.
+past).  A wide variety of date formats are supported, in particular
+ISO ("1972-09-24 20:05") or Internet ("24 Sep 1972 20:05").
 The \fIdate_spec\fP is interpreted as being in the local timezone, unless a
 specific timezone is specified.
 The specification is ``sticky'' when you use it to make a
@@ -423,22 +484,11 @@ is available with these commands:
 .BR checkout ", " export ", "
 .BR rdiff ", " rtag ", and " update .
 .TP
-.B \-H
-Help; describe the options available for this command.  This is the
-only option supported for
-.I all
-.B cvs
-commands.
-.TP
 \fB\-k\fP \fIkflag\fP
 Alter the default
-.SM RCS
-processing of keywords; all the
-.B \-k
-options described in
-.BR rcs ( 1 )
-are available.  The \fB\-k\fP option is available with the
-.BR add ", " checkout ", " diff ", "
+processing of keywords.
+The \fB\-k\fP option is available with the
+.BR add ", " checkout ", " diff ", " export ", "
 .BR rdiff ", and " update
 commands.  Your \fIkflag\fP specification is ``sticky'' when you use
 it to create a private copy of a source file; that is, when you use
@@ -446,6 +496,13 @@ this option with the \fBcheckout\fP or \fBupdate\fP commands,
 \fBcvs\fP associates your selected \fIkflag\fP with the file, and
 continues to use it with future \fBupdate\fP commands on the same file
 until you specify otherwise.
+.SP
+Some of the more useful \fIkflag\fPs are \-ko and \-kb (for binary files),
+and \-kv which is useful for an
+.B export
+where you wish to retain keyword information after an
+.B import
+at some other site.
 .TP
 .B \-l
 Local; run only in current working directory, rather than recurring through
@@ -531,9 +588,7 @@ make your own copy of a file: \fBcvs\fP remembers the \fItag\fP and
 continues to use it on future \fBupdate\fP commands, until you specify
 otherwise.
 .I tag
-can be either a symbolic or numeric tag, in
-.SM RCS
-fashion.
+can be either a symbolic or numeric tag.
 Specifying the
 .B \-q
 global option along with the
@@ -590,7 +645,6 @@ working directory.
 Use the
 .B add
 command to create a new file or directory in the
-.SM RCS
 source repository.
 The files or directories specified with
 .B add
@@ -607,7 +661,6 @@ If the argument to
 .` "cvs add"
 refers to an immediate sub-directory, the directory is
 created at the correct place in the
-.SM RCS
 source repository, and the necessary
 .B cvs
 administration files are created in your working directory.
@@ -650,7 +703,6 @@ or
 .` "cvs update -d".)
 .SP
 The added files are not placed in the
-.SM RCS
 source repository until you use
 .` "cvs commit"
 to make the change permanent.
@@ -688,9 +740,8 @@ file and can be changed with
 Specifying
 .` "-ko"
 is useful for checking in binaries that
-shouldn't have the
-.SM RCS
-id strings expanded.
+shouldn't have
+keywords expanded.
 .TP
 \fBadmin\fP [\fIrcs-options\fP] \fIfiles.\|.\|.\fP
 .I Requires:
@@ -705,14 +756,9 @@ repository.
 This is the
 .B cvs
 interface to assorted administrative
-.SM RCS
-facilities, documented in
+facilities, similar to
 .BR rcs ( 1 ).
-.` "cvs admin"
-simply passes all its options and arguments to the
-.B rcs
-command; it does no filtering or other processing.
-This command does work recursively, however, so extreme care should be
+This command works recursively, so extreme care should be
 used.
 .TP
 \fBcheckout\fP [\fBoptions\fP] \fImodules\fP.\|.\|.
@@ -751,7 +797,6 @@ You can then edit these source files at any time (regardless of whether
 other software developers are editing their own copies of the sources);
 update them to include new changes applied by others to the source
 repository; or commit your work as a permanent change to the
-.SM RCS
 repository.
 .SP
 Note that
@@ -868,7 +913,7 @@ the
 .B \-s
 option within the modules file. 
 .TP
-\fBcommit\fP [\fB\-lnR\fP] [\fB\-m\fP '\fIlog_message\fP' | \fB\-f\fP \fIfile\fP] [\fB\-r\fP \fIrevision\fP] [\fIfiles.\|.\|.\fP]
+\fBcommit\fP [\fB\-lnR\fP] [\fB\-m\fP '\fIlog_message\fP' | \fB\-F\fP \fIfile\fP] [\fB\-r\fP \fIrevision\fP] [\fIfiles.\|.\|.\fP]
 .I Requires:
 working directory, repository.
 .br
@@ -918,7 +963,6 @@ the time is right.
 .SP
 When all is well, an editor is invoked to allow you to enter a log
 message that will be written to one or more logging programs and placed in the
-.SM RCS
 source repository file.
 You can instead specify the log message on the command line with the
 .B \-m
@@ -928,12 +972,8 @@ option to specify that the argument \fIfile\fP contains the log message.
 .SP
 The
 .B \-r
-option can be used to commit to a particular symbolic or numeric revision
-within the
-.SM RCS
-file.
+option can be used to commit to a particular symbolic or numeric revision.
 For example, to bring all your files up to the
-.SM RCS
 revision ``3.0'' (including those that haven't changed), you might do:
 .SP
 .in +1i
@@ -1051,7 +1091,7 @@ differ from the corresponding revision in the source repository
 .I you
 have changed), or that differ from the revision specified.
 .TP
-\fBexport\fP [\-\fBf\|lNnQq\fP] \fB\-r\fP \fIrev\fP\||\|\fB\-D\fP \fIdate\fP [\fB\-d\fP \fIdir\fP] \fImodule\fP.\|.\|.
+\fBexport\fP [\-\fBf\|lNnQq\fP] \fB\-r\fP \fIrev\fP\||\|\fB\-D\fP \fIdate\fP [\fB\-d\fP \fIdir\fP] [\fB\-k\fP \fIkflag\fP] \fImodule\fP.\|.\|.
 .I Requires:
 repository.
 .br
@@ -1081,15 +1121,17 @@ These have the same meanings as the same options in
 .SP
 The
 .B \-kv
-option is always set when
+option is useful when
 .B export
 is used.
 This causes any
-.SM RCS
 keywords to be expanded such that an
 .B import
 done at some other site will not lose the keyword revision information.
-There is no way to override this.
+Other \fIkflag\fPs may be used with
+.` "cvs export"
+and are described in
+.BR co ( 1 ).
 .TP
 \fBhistory\fP [\fB\-\fP\fIreport\fP] [\fB\-\fP\fIflags\fP] [\fB\-\fP\fIoptions args\fP] [\fIfiles\fP.\|.\|.]
 .I Requires:
@@ -1211,7 +1253,7 @@ Each
 file is searched for the revision or tag.
 .TP 1i
 \fB\ \ \ \ \ \ \-t\fP \fItag\fP
-Show records since tag \fItag\fP was last added to the the history file.
+Show records since tag \fItag\fP was last added to the history file.
 This differs from the \fB-r\fP flag above in that it reads
 only the history file, not the
 .SM RCS
@@ -1254,25 +1296,10 @@ names associated with
 administration, or with other common source control systems; common
 names for patch files, object files, archive files, and editor backup
 files; and other names that are usually artifacts of assorted utilities.
-Currently, the default list of ignored files includes files matching
-these names:
-.SP
-.in +1i
-.ft B
-.nf
-RCSLOG  RCS  SCCS
-CVS*  cvslog.*
-tags  TAGS
-\&.make.state  .nse_depinfo
-*~  #*  .#*  ,*
-*.old  *.bak  *.BAK  *.orig  *.rej  .del\-*
-*.a  *.o  *.so  *.Z  *.elc  *.ln  core
-.fi
-.ft P
-.in -1i
+For an up to date list of ignored file names, see the Cederqvist manual (as
+described in the SEE ALSO section of this manpage).
 .SP
 The outside source is saved in a first-level
-.SM RCS
 branch, by default
 .` "1.1.1".
 Updates are leaves of this
@@ -1332,13 +1359,7 @@ nothing.
 .B rlog
 .br
 Display log information for \fIfiles\fP.
-.` "cvs log"
-calls
-the
-.SM RCS
-utility \fBrlog\fP; all the options described in
-.BR rlog ( 1 )
-are available.  Among the more useful \fBrlog\fP options are \fB\-h\fP
+Among the more useful options are \fB\-h\fP
 to display only the header (including tag definitions, but omitting
 most of the full log); \fB\-r\fP to select logs on particular
 revisions or ranges of revisions; and \fB\-d\fP to select particular
@@ -1386,14 +1407,6 @@ command when patching the old sources, so that
 .B patch
 is able to find the files that are located in other directories.
 .SP
-If you use the option \fB\-V\fP \fIvn\fP,
-.SM RCS
-keywords are expanded according to the rules current in
-.SM RCS
-version \fIvn\fP (the expansion format changed with
-.SM RCS
-version 5).
-.SP
 The standard option \fIflags\fP \fB\-f\fP, and \fB\-l\fP
 are available with this command.  There are also several
 special options flags:
@@ -1431,7 +1444,7 @@ Working directory.
 Working directory, history log.
 .br
 This command is meant to safely cancel the effect of
-.` "cvs checkout'.
+.` "cvs checkout".
 Since
 .B cvs
 doesn't lock files, it isn't strictly necessary to use this command.
@@ -1526,6 +1539,17 @@ should not be removed, but the
 option is available as a means to remove completely obsolete symbolic names
 if necessary (as might be the case for an Alpha release, say).
 .SP
+.` "cvs rtag"
+will not move a tag that already exists.  With the \fB\-F\fP option,
+however,
+.` "cvs rtag"
+will re-locate any instance of \fIsymbolic_tag\fP that already exists
+on that file to the new repository versions.  Without the \fB\-F\fP
+option, attempting to use
+.` "cvs rtag"
+to apply a tag that already exists on that file will produce an error
+message.
+.SP
 The \fB-b\fP option makes the tag a ``branch'' tag, allowing
 concurrent, isolated development.
 This is most useful for creating a patch to a previously released software
@@ -1589,7 +1613,7 @@ option causes the symbolic tags for the
 .SM RCS
 file to be displayed as well.
 .TP
-\fBtag\fP [\fB\-lQqR\fP] [\fB\-b\fP] [\fB\-d\fP] \fIsymbolic_tag\fP [\fIfiles\fP\|.\|.\|.\|]
+\fBtag\fP [\fB\-lQqR\fP] [\fB\-F\fP] [\fB\-b\fP] [\fB\-d\fP] [\fB\-r\fP \fItag\fP | \fB\-D\fP \fIdate\fP] [\fB\-f\fP] \fIsymbolic_tag\fP [\fIfiles\fP\|.\|.\|.\|]
 .I Requires:
 working directory, repository.
 .br
@@ -1601,9 +1625,14 @@ repository.
 .br
 Use this command to assign symbolic tags to the nearest repository
 versions to your working sources.  The tags are applied immediately to
-the repository, as with \fBrtag\fP, but the versions are supplied
-implicitly by the \fBcvs\fP records of your working files' history
-rather than applied explicitly.
+the repository, as with \fBrtag\fP.
+.SP
+One potentially surprising aspect of the fact that \fBcvs tag\fP
+operates on the repository is that you are tagging the checked-in
+revisions, which may differ from locally modified files in your working
+directory.  If you want to avoid doing this by mistake, specify the
+\fB-c\fP option to \fBcvs tag\fP.  If there are any locally modified files, CVS
+will abort with an error before it tags any files.
 .SP
 One use for tags is to record a ``snapshot'' of the current sources
 when the software freeze date of a project arrives.  As bugs are fixed
@@ -1613,12 +1642,27 @@ of the release need be re-tagged.
 The symbolic tags are meant to permanently record which revisions of which
 files were used in creating a software distribution.
 The
-.B checkout
+.BR checkout ,
+.B export
 and
 .B update
 commands allow you to extract an exact copy of a tagged release at any time in
 the future, regardless of whether files have been changed, added, or removed
 since the release was tagged.
+.SP
+You can use the standard \fB\-r\fP and \fB\-D\fP options to tag only those
+files that already contain a certain tag.  This method would be used
+to rename a tag: tag only the files identified by the old tag, then delete the
+old tag, leaving the new tag on exactly the same files as the old tag.
+.SP
+Specifying the \fB\-f\fP flag in addition to the \fB\-r\fP or \fB\-D\fP
+flags will tag those files named on the command line even if they do not
+contain the old tag or did not exist on the specified date.
+.SP
+By default (without a \fB\-r\fP or \fB\-D\fP flag)
+the versions to be tagged are supplied
+implicitly by the \fBcvs\fP records of your working files' history
+rather than applied explicitly.
 .SP
 If you use
 .` "cvs tag \-d \fIsymbolic_tag\fP\|.\|.\|.",
@@ -1628,6 +1672,17 @@ symbolic tag you specify is
 instead of being added.  \fIWarning\fP: Be very certain of your ground
 before you delete a tag; doing this effectively discards some
 historical information, which may later turn out to have been valuable.
+.SP
+.` "cvs tag"
+will not move a tag that already exists.  With the \fB\-F\fP option,
+however,
+.` "cvs tag"
+will re-locate any instance of \fIsymbolic_tag\fP that already exists
+on that file to the new repository versions.  Without the \fB\-F\fP
+option, attempting to use
+.` "cvs tag"
+to apply a tag that already exists on that file will produce an error
+message.
 .SP
 The \fB-b\fP option makes the tag a ``branch'' tag, allowing
 concurrent, isolated development.
@@ -1640,7 +1695,7 @@ executes recursively through subdirectories; you can prevent this by
 using the standard \fB\-l\fP option, or specify the recursion
 explicitly by using \fB\-R\fP.
 .TP
-\fBupdate\fP [\fB\-Adf\|lPpQqR\fP] [\fB\-d\fP] [\fB\-r\fP \fItag\fP|\fB\-D\fP \fIdate\fP] \fIfiles\|.\|.\|.\fP
+\fBupdate\fP [\fB\-ACdf\|lPpQqR\fP] [\fB\-d\fP] [\fB\-r\fP \fItag\fP|\fB\-D\fP \fIdate\fP] \fIfiles\|.\|.\|.\fP
 .I Requires:
 repository, working directory.
 .br
@@ -1664,7 +1719,7 @@ or
 .B update
 keeps you informed of its progress by printing a line for each file,
 prefaced with one of the characters
-.` "U A R M C ?"
+.` "U P A R M C ?"
 to indicate the status of the file:
 .TP 1i
 \fBU\fP \fIfile\fP
@@ -1673,10 +1728,13 @@ This is done for any file that exists in the repository but not in
 your source, and for files that you haven't changed but are not the most
 recent versions available in the repository.
 .TP 1i
+\fBP\fP \fIfile\fP
+Like \fBU\fP, but the CVS server sends a patch instead of an entire file.
+This accomplishes the same thing as \fBU\fP using less bandwidth.
+.TP 1i
 \fBA\fP \fIfile\fP
 The file has been \fIadded\fP to your private copy of the sources, and
 will be added to the
-.SM RCS
 source repository when you run
 .` "cvs commit"
 on the file.
@@ -1685,7 +1743,6 @@ This is a reminder to you that the file needs to be committed.
 \fBR\fP \fIfile\fP
 The file has been \fIremoved\fP from your private copy of the sources, and
 will be removed from the
-.SM RCS
 source repository when you run
 .` "cvs commit"
 on the file.
@@ -1704,14 +1761,12 @@ directory.
 \fBC\fP \fIfile\fP
 A \fIconflict\fP was detected while trying to merge your changes to
 \fIfile\fP with changes from the source repository.  \fIfile\fP (the
-copy in your working directory) is now the output of the
-.BR rcsmerge ( 1 )
-command on the two versions; an unmodified copy of your file is also
+copy in your working directory) is now the result of merging
+the two versions; an unmodified copy of your file is also
 in your working directory, with the name `\fB.#\fP\fIfile\fP\fB.\fP\fIversion\fP',
 where
 .I version
 is the
-.SM RCS
 revision that your modified file started from.
 (Note that some systems automatically purge files that begin with
 \&
@@ -1793,25 +1848,19 @@ Use \fB\-I\fP \fIname\fP to ignore files whose names match \fIname\fP
 (in your working directory) during the update.  You can specify
 \fB\-I\fP more than once on the command line to specify several files
 to ignore.  By default,
-\fBupdate\fP ignores files whose names match any of the following:
-.SP
-.in +1i
-.ft B
-.nf
-RCSLOG  RCS  SCCS
-CVS*  cvslog.*
-tags  TAGS
-\&.make.state  .nse_depinfo
-*~  #*  .#*  ,*
-*.old  *.bak  *.BAK  *.orig  *.rej  .del\-*
-*.a  *.o  *.so  *.Z  *.elc  *.ln  core
-.fi
-.ft P
-.in -1i
+\fBupdate\fP ignores files whose names match certain patterns; for
+an up to date list of ignored file names, see the Cederqvist manual (as
+described in the SEE ALSO section of this manpage).
 .SP
 Use
 .` "\-I !"
 to avoid ignoring any files at all.
+.SP
+Use the
+.` "\-C"
+option to overwrite locally modified files with clean copies from
+the repository (the modified file is saved in
+`\fB.#\fP\fIfile\fP\fB.\fP\fIrevision\fP', however).
 .SP
 The standard \fBcvs\fP command options \fB\-f\fP, \fB\-k\fP,
 \fB\-l\fP, \fB\-P\fP, \fB\-p\fP, and \fB\-r\fP
@@ -1822,6 +1871,27 @@ For more detailed information on
 .B cvs
 supporting files, see
 .BR cvs ( 5 ).
+.LP
+.I
+Files in home directories:
+.TP
+\&.cvsrc
+The
+.B cvs
+initialisation file.  Lines in this file can be used to specify default
+options for each
+.B cvs
+command.  For example the line
+.` "diff \-c"
+will ensure that
+.` "cvs diff"
+is always passed the
+.B \-c
+option in addition to any other options passed on the command line.
+.TP
+\&.cvswrappers
+Specifies wrappers to be used in addition to those specified in the
+CVSROOT/cvswrappers file in the repository.
 .LP
 .I
 Files in working directories:
@@ -1841,6 +1911,21 @@ A backup of
 CVS/Entries.Static
 Flag: do not add more entries on
 .` "cvs update".
+.TP
+CVS/Root
+Pathname to the repository (
+.SM CVSROOT
+) location at the time of checkout.  This file is used instead
+of the
+.SM CVSROOT
+environment variable if the environment variable is not
+set.  A warning message will be issued when the contents of this
+file and the
+.SM CVSROOT
+environment variable differ.  The file may be over-ridden by the
+presence of the
+.SM CVS_IGNORE_REMOTE_ROOT
+environment variable.
 .TP
 CVS/Repository
 Pathname to the corresponding directory in the source repository.
@@ -1876,35 +1961,50 @@ Records programs for filtering
 .` "cvs commit"
 requests.
 .TP
-CVSROOT/history
-Log file of \fBcvs\fP transactions.
-.TP
-CVSROOT/modules,v
-Definitions for modules in this repository.
-.TP
-CVSROOT/loginfo,v
-Records programs for piping
-.` "cvs commit"
-log entries.
-.TP
-CVSROOT/rcsinfo,v
-Records pathnames to templates used during a
-.` "cvs commit"
-operation.
+CVSROOT/cvswrappers,v
+Records
+.B cvs
+wrapper commands to be used when checking files into and out of the
+repository.  Wrappers allow the file or directory to be processed
+on the way in and out of CVS.  The intended uses are many, one
+possible use would be to reformat a C file before the file is checked
+in, so all of the code in the repository looks the same.
 .TP
 CVSROOT/editinfo,v
 Records programs for editing/validating
 .` "cvs commit"
 log entries.
 .TP
-Attic
+CVSROOT/history
+Log file of \fBcvs\fP transactions.
+.TP
+CVSROOT/loginfo,v
+Records programs for piping
+.` "cvs commit"
+log entries.
+.TP
+CVSROOT/modules,v
+Definitions for modules in this repository.
+.TP
+CVSROOT/rcsinfo,v
+Records pathnames to templates used during a
+.` "cvs commit"
+operation.
+.TP
+CVSROOT/taginfo,v
+Records programs for validating/logging
+.` "cvs tag"
+and
+.` "cvs rtag"
+operations.
+.TP
+MODULE/Attic
 Directory for removed source files.
 .TP
 #cvs.lock
 A lock directory created by
 .B cvs
 when doing sensitive changes to the
-.SM RCS
 source repository.
 .TP
 #cvs.tfl.\fIpid\fP
@@ -1949,20 +2049,50 @@ Specifies the full pathname where to find
 programs, such as
 .BR co ( 1 )
 and
-.BR ci ( 1 ).
-If not set, a compiled-in value is used; see the display from
-.` "cvs \-v".
+.BR ci ( 1 )
+(CVS 1.9 and older).
 .TP
 .SM CVSEDITOR
 Specifies the program to use for recording log messages during
 .BR commit .
 If not set, the
+.SM VISUAL
+and
 .SM EDITOR
-environment variable is used instead.
-If
-.SM EDITOR
-is not set either, the default is
-.BR /usr/ucb/vi .
+environment variables are tried (in that order).
+If neither is set, a system-dependent default editor (e.g.,
+.BR vi )
+is used.
+.TP
+.SM CVS_IGNORE_REMOTE_ROOT
+If this variable is set then
+.B cvs
+will ignore all references to remote repositories in the CVS/Root file.
+.TP
+.SM CVS_RSH
+.B cvs
+uses the contents of this variable to determine the name of the
+remote shell command to use when starting a
+.B cvs
+server.  If this variable is not set then
+.` "rsh"
+is used.
+.TP
+.SM CVS_SERVER
+.B cvs 
+uses the contents of this variable to determine the name of the
+.B cvs
+server command.  If this variable is not set then
+.` "cvs"
+is used.
+.TP
+.SM CVSWRAPPERS
+This variable is used by the
+.` "cvswrappers"
+script to determine the name of the wrapper file, in addition to the
+wrappers defaults contained in the repository
+.SM (CVSROOT/cvswrappers)
+and the user's home directory (~/.cvswrappers).
 .SH "AUTHORS"
 .TP
 Dick Grune
@@ -1987,19 +2117,31 @@ module and vendor branch support and author of the
 .BR checkin ( 1 )
 shell script (the ancestor of
 .` "cvs import").
+.TP
+And many others too numerous to mention here.
 .SH "SEE ALSO"
+The most comprehensive manual for CVS is
+Version Management with CVS by Per Cederqvist et al.  Depending on
+your system, you may be able to get it with the
+.B info cvs
+command or it may be available as cvs.ps (postscript), cvs.texinfo
+(texinfo source), or cvs.html.
+.SP
+For CVS updates, more information on documentation, software related
+to CVS, development of CVS, and more, see:
+.in +1i
+.B http://cvshome.org
+.B http://www.loria.fr/~molli/cvs-index.html
+.in -1i
+.SP
 .BR ci ( 1 ),
 .BR co ( 1 ),
 .BR cvs ( 5 ),
 .BR cvsbug ( 8 ),
-.BR cvsinit ( 8 ),
 .BR diff ( 1 ),
 .BR grep ( 1 ),
-.BR mkmodules ( 1 ),
 .BR patch ( 1 ),
 .BR rcs ( 1 ),
 .BR rcsdiff ( 1 ),
 .BR rcsmerge ( 1 ),
-.BR rlog ( 1 ),
-.BR rm ( 1 ),
-.BR sort ( 1 ).
+.BR rlog ( 1 ).

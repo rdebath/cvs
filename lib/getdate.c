@@ -1,31 +1,30 @@
 
-/*  A Bison parser, made from /u/jimb/ccvs/lib/getdate.y with Bison version GNU Bison version 1.22
-  */
+/*  A Bison parser, made from getdate.y
+    by GNU Bison version 1.28  */
 
 #define YYBISON 1  /* Identify Bison output.  */
 
-#define	tAGO	258
-#define	tDAY	259
-#define	tDAYZONE	260
-#define	tID	261
-#define	tMERIDIAN	262
-#define	tMINUTE_UNIT	263
-#define	tMONTH	264
-#define	tMONTH_UNIT	265
-#define	tSEC_UNIT	266
-#define	tSNUMBER	267
-#define	tUNUMBER	268
-#define	tZONE	269
-#define	tDST	270
+#define	tAGO	257
+#define	tDAY	258
+#define	tDAYZONE	259
+#define	tID	260
+#define	tMERIDIAN	261
+#define	tMINUTE_UNIT	262
+#define	tMONTH	263
+#define	tMONTH_UNIT	264
+#define	tSEC_UNIT	265
+#define	tSNUMBER	266
+#define	tUNUMBER	267
+#define	tZONE	268
+#define	tDST	269
 
-#line 1 "/u/jimb/ccvs/lib/getdate.y"
+#line 1 "getdate.y"
 
 /*
 **  Originally written by Steven M. Bellovin <smb@research.att.com> while
 **  at the University of North Carolina at Chapel Hill.  Later tweaked by
 **  a couple of people on Usenet.  Completely overhauled by Rich $alz
 **  <rsalz@bbn.com> and Jim Berets <jberets@bbn.com> in August, 1990;
-**  send any email to Rich.
 **
 **  This grammar has 10 shift/reduce conflicts.
 **
@@ -40,27 +39,6 @@
 #else
 #include "config.h"
 #endif
-#endif
-
-/* AIX requires this to be the first thing in the file.  */
-#ifdef __GNUC__
-# define alloca __builtin_alloca
-#else
-# if HAVE_ALLOCA_H
-#  include <alloca.h>
-# else
-#  ifdef _AIX
-#pragma alloca
-#  else
-#   ifndef alloca /* predefined by HP cc +Olibcalls */
-char *alloca ();
-#   endif
-#  endif
-# endif
-#endif
-
-#ifdef STDC_HEADERS
-#include <stdlib.h>
 #endif
 
 /* Since the code of getdate.y is not included in the Emacs executable
@@ -82,46 +60,11 @@ char *alloca ();
    Include <sys/time.h> if that will be used.  */
 
 #if	defined(vms)
-
-#include <types.h>
-#include <time.h>
-
-#else
-
-#include <sys/types.h>
-
-#ifdef TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#ifdef timezone
-#undef timezone /* needed for sgi */
-#endif
-
-#if defined(HAVE_SYS_TIMEB_H)
-#include <sys/timeb.h>
-#else
-/*
-** We use the obsolete `struct timeb' as part of our interface!
-** Since the system doesn't have it, we define it here;
-** our callers must do likewise.
-*/
-struct timeb {
-    time_t		time;		/* Seconds since the epoch	*/
-    unsigned short	millitm;	/* Field not used		*/
-    short		timezone;	/* Minutes west of GMT		*/
-    short		dstflag;	/* Field not used		*/
-};
-#endif /* defined(HAVE_SYS_TIMEB_H) */
-
-#endif	/* defined(vms) */
+# include <types.h>
+#else /* defined(vms) */
+# include <sys/types.h>
+#endif	/* !defined(vms) */
+# include "xtime.h"
 
 #if defined (STDC_HEADERS) || defined (USG)
 #include <string.h>
@@ -134,6 +77,23 @@ struct timeb {
 #define bcopy(from, to, len) memcpy ((to), (from), (len))
 #endif
 
+#if defined (STDC_HEADERS)
+#include <stdlib.h>
+#endif
+
+/* NOTES on rebuilding getdate.c (particularly for inclusion in CVS
+   releases):
+
+   We don't want to mess with all the portability hassles of alloca.
+   In particular, most (all?) versions of bison will use alloca in
+   their parser.  If bison works on your system (e.g. it should work
+   with gcc), then go ahead and use it, but the more general solution
+   is to use byacc instead of bison, which should generate a portable
+   parser.  I played with adding "#define alloca dont_use_alloca", to
+   give an error if the parser generator uses alloca (and thus detect
+   unportable getdate.c's), but that seems to cause as many problems
+   as it solves.  */
+
 extern struct tm	*gmtime();
 extern struct tm	*localtime();
 
@@ -141,10 +101,7 @@ extern struct tm	*localtime();
 #define yylex getdate_yylex
 #define yyerror getdate_yyerror
 
-#if	!defined(lint) && !defined(SABER)
-static char RCS[] = "$CVSid: @(#)getdate.y 1.11 94/09/21 $";
-#endif	/* !defined(lint) && !defined(SABER) */
-
+static int yyparse ();
 static int yylex ();
 static int yyerror ();
 
@@ -205,28 +162,11 @@ static time_t	yyRelMonth;
 static time_t	yyRelSeconds;
 
 
-#line 167 "/u/jimb/ccvs/lib/getdate.y"
+#line 145 "getdate.y"
 typedef union {
     time_t		Number;
     enum _MERIDIAN	Meridian;
 } YYSTYPE;
-
-#ifndef YYLTYPE
-typedef
-  struct yyltype
-    {
-      int timestamp;
-      int first_line;
-      int first_column;
-      int last_line;
-      int last_column;
-      char *text;
-   }
-  yyltype;
-
-#define YYLTYPE yyltype
-#endif
-
 #include <stdio.h>
 
 #ifndef __cplusplus
@@ -241,7 +181,7 @@ typedef
 #define	YYFLAG		-32768
 #define	YYNTBASE	19
 
-#define YYTRANSLATE(x) ((unsigned)(x) <= 270 ? yytranslate[x] : 29)
+#define YYTRANSLATE(x) ((unsigned)(x) <= 269 ? yytranslate[x] : 29)
 
 static const char yytranslate[] = {     0,
      2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -269,8 +209,8 @@ static const char yytranslate[] = {     0,
      2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
      2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
      2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-     2,     2,     2,     2,     2,     1,     2,     3,     4,     5,
-     6,     7,     8,     9,    10,    11,    12,    13,    14,    15
+     2,     2,     2,     2,     2,     1,     3,     4,     5,     6,
+     7,     8,     9,    10,    11,    12,    13,    14,    15
 };
 
 #if YYDEBUG != 0
@@ -302,17 +242,21 @@ static const short yyrhs[] = {    -1,
 
 #if YYDEBUG != 0
 static const short yyrline[] = { 0,
-   181,   182,   185,   188,   191,   194,   197,   200,   203,   209,
-   215,   222,   228,   238,   242,   246,   253,   257,   261,   267,
-   271,   276,   282,   288,   292,   297,   301,   308,   312,   315,
-   318,   321,   324,   327,   330,   333,   336,   339,   344,   371,
-   374
+   159,   160,   163,   166,   169,   172,   175,   178,   181,   187,
+   193,   200,   206,   216,   220,   224,   231,   235,   239,   245,
+   249,   260,   266,   272,   276,   281,   285,   292,   296,   299,
+   302,   305,   308,   311,   314,   317,   320,   323,   328,   355,
+   358
 };
+#endif
 
-static const char * const yytname[] = {   "$","error","$illegal.","tAGO","tDAY",
+
+#if YYDEBUG != 0 || defined (YYERROR_VERBOSE)
+
+static const char * const yytname[] = {   "$","error","$undefined.","tAGO","tDAY",
 "tDAYZONE","tID","tMERIDIAN","tMINUTE_UNIT","tMONTH","tMONTH_UNIT","tSEC_UNIT",
 "tSNUMBER","tUNUMBER","tZONE","tDST","':'","','","'/'","spec","item","time",
-"zone","day","date","rel","relunit","number","o_merid",""
+"zone","day","date","rel","relunit","number","o_merid", NULL
 };
 #endif
 
@@ -378,14 +322,15 @@ static const short yycheck[] = {     0,
     13,    47
 };
 /* -*-C-*-  Note some compilers choke on comments on `#line' lines.  */
-#line 3 "/usr/local/lib/bison.simple"
+#line 3 "/usr/lib/bison.simple"
+/* This file comes from bison-1.28.  */
 
 /* Skeleton output parser for bison,
-   Copyright (C) 1984, 1989, 1990 Bob Corbett and Richard Stallman
+   Copyright (C) 1984, 1989, 1990 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
-   the Free Software Foundation; either version 1, or (at your option)
+   the Free Software Foundation; either version 2, or (at your option)
    any later version.
 
    This program is distributed in the hope that it will be useful,
@@ -395,42 +340,66 @@ static const short yycheck[] = {     0,
 
    You should have received a copy of the GNU General Public License
    along with this program; if not, write to the Free Software
-   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
+   Foundation, Inc., 59 Temple Place - Suite 330,
+   Boston, MA 02111-1307, USA.  */
 
-
-#ifndef alloca
-#ifdef __GNUC__
-#define alloca __builtin_alloca
-#else /* not GNU C.  */
-#if (!defined (__STDC__) && defined (sparc)) || defined (__sparc__) || defined (__sparc) || defined (__sgi)
-#include <alloca.h>
-#else /* not sparc */
-#if defined (MSDOS) && !defined (__TURBOC__)
-#include <malloc.h>
-#else /* not MSDOS, or __TURBOC__ */
-#if defined(_AIX)
-#include <malloc.h>
- #pragma alloca
-#else /* not MSDOS, __TURBOC__, or _AIX */
-#ifdef __hpux
-#ifdef __cplusplus
-extern "C" {
-void *alloca (unsigned int);
-};
-#else /* not __cplusplus */
-void *alloca ();
-#endif /* not __cplusplus */
-#endif /* __hpux */
-#endif /* not _AIX */
-#endif /* not MSDOS, or __TURBOC__ */
-#endif /* not sparc.  */
-#endif /* not GNU C.  */
-#endif /* alloca not defined.  */
+/* As a special exception, when this file is copied by Bison into a
+   Bison output file, you may use that output file without restriction.
+   This special exception was added by the Free Software Foundation
+   in version 1.24 of Bison.  */
 
 /* This is the parser code that is written into each bison parser
   when the %semantic_parser declaration is not specified in the grammar.
   It was written by Richard Stallman by simplifying the hairy parser
   used when %semantic_parser is specified.  */
+
+#ifndef YYSTACK_USE_ALLOCA
+#ifdef alloca
+#define YYSTACK_USE_ALLOCA
+#else /* alloca not defined */
+#ifdef __GNUC__
+#define YYSTACK_USE_ALLOCA
+#define alloca __builtin_alloca
+#else /* not GNU C.  */
+#if (!defined (__STDC__) && defined (sparc)) || defined (__sparc__) || defined (__sparc) || defined (__sgi) || (defined (__sun) && defined (__i386))
+#define YYSTACK_USE_ALLOCA
+#include <alloca.h>
+#else /* not sparc */
+/* We think this test detects Watcom and Microsoft C.  */
+/* This used to test MSDOS, but that is a bad idea
+   since that symbol is in the user namespace.  */
+#if (defined (_MSDOS) || defined (_MSDOS_)) && !defined (__TURBOC__)
+#if 0 /* No need for malloc.h, which pollutes the namespace;
+	 instead, just don't use alloca.  */
+#include <malloc.h>
+#endif
+#else /* not MSDOS, or __TURBOC__ */
+#if defined(_AIX)
+/* I don't know what this was needed for, but it pollutes the namespace.
+   So I turned it off.   rms, 2 May 1997.  */
+/* #include <malloc.h>  */
+ #pragma alloca
+#define YYSTACK_USE_ALLOCA
+#else /* not MSDOS, or __TURBOC__, or _AIX */
+#if 0
+#ifdef __hpux /* haible@ilog.fr says this works for HPUX 9.05 and up,
+		 and on HPUX 10.  Eventually we can turn this on.  */
+#define YYSTACK_USE_ALLOCA
+#define alloca __builtin_alloca
+#endif /* __hpux */
+#endif
+#endif /* not _AIX */
+#endif /* not MSDOS, or __TURBOC__ */
+#endif /* not sparc */
+#endif /* not GNU C */
+#endif /* alloca not defined */
+#endif /* YYSTACK_USE_ALLOCA not defined */
+
+#ifdef YYSTACK_USE_ALLOCA
+#define YYSTACK_ALLOC alloca
+#else
+#define YYSTACK_ALLOC malloc
+#endif
 
 /* Note: there must be only one dollar sign in this file.
    It is replaced by the list of actions, each action
@@ -440,8 +409,8 @@ void *alloca ();
 #define yyclearin	(yychar = YYEMPTY)
 #define YYEMPTY		-2
 #define YYEOF		0
-#define YYACCEPT	return(0)
-#define YYABORT 	return(1)
+#define YYACCEPT	goto yyacceptlab
+#define YYABORT 	goto yyabortlab
 #define YYERROR		goto yyerrlab1
 /* Like YYERROR except do call yyerror.
    This remains here temporarily to ease the
@@ -470,10 +439,18 @@ while (0)
 
 #ifdef YYPURE
 #ifdef YYLSP_NEEDED
+#ifdef YYLEX_PARAM
+#define YYLEX		yylex(&yylval, &yylloc, YYLEX_PARAM)
+#else
 #define YYLEX		yylex(&yylval, &yylloc)
+#endif
+#else /* not YYLSP_NEEDED */
+#ifdef YYLEX_PARAM
+#define YYLEX		yylex(&yylval, YYLEX_PARAM)
 #else
 #define YYLEX		yylex(&yylval)
 #endif
+#endif /* not YYLSP_NEEDED */
 #endif
 
 /* If nonreentrant, generate the variables here */
@@ -514,24 +491,24 @@ int yydebug;			/*  nonzero means print parse trace	*/
 #ifndef YYMAXDEPTH
 #define YYMAXDEPTH 10000
 #endif
-
-/* Prevent warning if -Wstrict-prototypes.  */
-#ifdef __GNUC__
-int yyparse (void);
-#endif
 
+/* Define __yy_memcpy.  Note that the size argument
+   should be passed with type unsigned int, because that is what the non-GCC
+   definitions require.  With GCC, __builtin_memcpy takes an arg
+   of type size_t, but it can handle unsigned int.  */
+
 #if __GNUC__ > 1		/* GNU C and GNU C++ define this.  */
-#define __yy_bcopy(FROM,TO,COUNT)	__builtin_memcpy(TO,FROM,COUNT)
+#define __yy_memcpy(TO,FROM,COUNT)	__builtin_memcpy(TO,FROM,COUNT)
 #else				/* not GNU C or C++ */
 #ifndef __cplusplus
 
 /* This is the most reliable way to avoid incompatibilities
    in available built-in functions on various systems.  */
 static void
-__yy_bcopy (from, to, count)
-     char *from;
+__yy_memcpy (to, from, count)
      char *to;
-     int count;
+     char *from;
+     unsigned int count;
 {
   register char *f = from;
   register char *t = to;
@@ -546,10 +523,10 @@ __yy_bcopy (from, to, count)
 /* This is the most reliable way to avoid incompatibilities
    in available built-in functions on various systems.  */
 static void
-__yy_bcopy (char *from, char *to, int count)
+__yy_memcpy (char *to, char *from, unsigned int count)
 {
-  register char *f = from;
   register char *t = to;
+  register char *f = from;
   register int i = count;
 
   while (i-- > 0)
@@ -559,9 +536,39 @@ __yy_bcopy (char *from, char *to, int count)
 #endif
 #endif
 
-#line 184 "/usr/local/lib/bison.simple"
+#line 217 "/usr/lib/bison.simple"
+
+/* The user can define YYPARSE_PARAM as the name of an argument to be passed
+   into yyparse.  The argument should have type void *.
+   It should actually point to an object.
+   Grammar actions can access the variable by casting it
+   to the proper pointer type.  */
+
+#ifdef YYPARSE_PARAM
+#ifdef __cplusplus
+#define YYPARSE_PARAM_ARG void *YYPARSE_PARAM
+#define YYPARSE_PARAM_DECL
+#else /* not __cplusplus */
+#define YYPARSE_PARAM_ARG YYPARSE_PARAM
+#define YYPARSE_PARAM_DECL void *YYPARSE_PARAM;
+#endif /* not __cplusplus */
+#else /* not YYPARSE_PARAM */
+#define YYPARSE_PARAM_ARG
+#define YYPARSE_PARAM_DECL
+#endif /* not YYPARSE_PARAM */
+
+/* Prevent warning if -Wstrict-prototypes.  */
+#ifdef __GNUC__
+#ifdef YYPARSE_PARAM
+int yyparse (void *);
+#else
+int yyparse (void);
+#endif
+#endif
+
 int
-yyparse()
+yyparse(YYPARSE_PARAM_ARG)
+     YYPARSE_PARAM_DECL
 {
   register int yystate;
   register int yyn;
@@ -587,6 +594,7 @@ yyparse()
 #endif
 
   int yystacksize = YYINITDEPTH;
+  int yyfree_stacks = 0;
 
 #ifdef YYPURE
   int yychar;
@@ -671,18 +679,32 @@ yynewstate:
       if (yystacksize >= YYMAXDEPTH)
 	{
 	  yyerror("parser stack overflow");
+	  if (yyfree_stacks)
+	    {
+	      free (yyss);
+	      free (yyvs);
+#ifdef YYLSP_NEEDED
+	      free (yyls);
+#endif
+	    }
 	  return 2;
 	}
       yystacksize *= 2;
       if (yystacksize > YYMAXDEPTH)
 	yystacksize = YYMAXDEPTH;
-      yyss = (short *) alloca (yystacksize * sizeof (*yyssp));
-      __yy_bcopy ((char *)yyss1, (char *)yyss, size * sizeof (*yyssp));
-      yyvs = (YYSTYPE *) alloca (yystacksize * sizeof (*yyvsp));
-      __yy_bcopy ((char *)yyvs1, (char *)yyvs, size * sizeof (*yyvsp));
+#ifndef YYSTACK_USE_ALLOCA
+      yyfree_stacks = 1;
+#endif
+      yyss = (short *) YYSTACK_ALLOC (yystacksize * sizeof (*yyssp));
+      __yy_memcpy ((char *)yyss, (char *)yyss1,
+		   size * (unsigned int) sizeof (*yyssp));
+      yyvs = (YYSTYPE *) YYSTACK_ALLOC (yystacksize * sizeof (*yyvsp));
+      __yy_memcpy ((char *)yyvs, (char *)yyvs1,
+		   size * (unsigned int) sizeof (*yyvsp));
 #ifdef YYLSP_NEEDED
-      yyls = (YYLTYPE *) alloca (yystacksize * sizeof (*yylsp));
-      __yy_bcopy ((char *)yyls1, (char *)yyls, size * sizeof (*yylsp));
+      yyls = (YYLTYPE *) YYSTACK_ALLOC (yystacksize * sizeof (*yylsp));
+      __yy_memcpy ((char *)yyls, (char *)yyls1,
+		   size * (unsigned int) sizeof (*yylsp));
 #endif
 #endif /* no yyoverflow */
 
@@ -843,37 +865,37 @@ yyreduce:
   switch (yyn) {
 
 case 3:
-#line 185 "/u/jimb/ccvs/lib/getdate.y"
+#line 163 "getdate.y"
 {
 	    yyHaveTime++;
 	;
     break;}
 case 4:
-#line 188 "/u/jimb/ccvs/lib/getdate.y"
+#line 166 "getdate.y"
 {
 	    yyHaveZone++;
 	;
     break;}
 case 5:
-#line 191 "/u/jimb/ccvs/lib/getdate.y"
+#line 169 "getdate.y"
 {
 	    yyHaveDate++;
 	;
     break;}
 case 6:
-#line 194 "/u/jimb/ccvs/lib/getdate.y"
+#line 172 "getdate.y"
 {
 	    yyHaveDay++;
 	;
     break;}
 case 7:
-#line 197 "/u/jimb/ccvs/lib/getdate.y"
+#line 175 "getdate.y"
 {
 	    yyHaveRel++;
 	;
     break;}
 case 9:
-#line 203 "/u/jimb/ccvs/lib/getdate.y"
+#line 181 "getdate.y"
 {
 	    yyHour = yyvsp[-1].Number;
 	    yyMinutes = 0;
@@ -882,7 +904,7 @@ case 9:
 	;
     break;}
 case 10:
-#line 209 "/u/jimb/ccvs/lib/getdate.y"
+#line 187 "getdate.y"
 {
 	    yyHour = yyvsp[-3].Number;
 	    yyMinutes = yyvsp[-1].Number;
@@ -891,7 +913,7 @@ case 10:
 	;
     break;}
 case 11:
-#line 215 "/u/jimb/ccvs/lib/getdate.y"
+#line 193 "getdate.y"
 {
 	    yyHour = yyvsp[-3].Number;
 	    yyMinutes = yyvsp[-1].Number;
@@ -901,7 +923,7 @@ case 11:
 	;
     break;}
 case 12:
-#line 222 "/u/jimb/ccvs/lib/getdate.y"
+#line 200 "getdate.y"
 {
 	    yyHour = yyvsp[-5].Number;
 	    yyMinutes = yyvsp[-3].Number;
@@ -910,7 +932,7 @@ case 12:
 	;
     break;}
 case 13:
-#line 228 "/u/jimb/ccvs/lib/getdate.y"
+#line 206 "getdate.y"
 {
 	    yyHour = yyvsp[-5].Number;
 	    yyMinutes = yyvsp[-3].Number;
@@ -921,64 +943,70 @@ case 13:
 	;
     break;}
 case 14:
-#line 238 "/u/jimb/ccvs/lib/getdate.y"
+#line 216 "getdate.y"
 {
 	    yyTimezone = yyvsp[0].Number;
 	    yyDSTmode = DSToff;
 	;
     break;}
 case 15:
-#line 242 "/u/jimb/ccvs/lib/getdate.y"
+#line 220 "getdate.y"
 {
 	    yyTimezone = yyvsp[0].Number;
 	    yyDSTmode = DSTon;
 	;
     break;}
 case 16:
-#line 247 "/u/jimb/ccvs/lib/getdate.y"
+#line 225 "getdate.y"
 {
 	    yyTimezone = yyvsp[-1].Number;
 	    yyDSTmode = DSTon;
 	;
     break;}
 case 17:
-#line 253 "/u/jimb/ccvs/lib/getdate.y"
+#line 231 "getdate.y"
 {
 	    yyDayOrdinal = 1;
 	    yyDayNumber = yyvsp[0].Number;
 	;
     break;}
 case 18:
-#line 257 "/u/jimb/ccvs/lib/getdate.y"
+#line 235 "getdate.y"
 {
 	    yyDayOrdinal = 1;
 	    yyDayNumber = yyvsp[-1].Number;
 	;
     break;}
 case 19:
-#line 261 "/u/jimb/ccvs/lib/getdate.y"
+#line 239 "getdate.y"
 {
 	    yyDayOrdinal = yyvsp[-1].Number;
 	    yyDayNumber = yyvsp[0].Number;
 	;
     break;}
 case 20:
-#line 267 "/u/jimb/ccvs/lib/getdate.y"
+#line 245 "getdate.y"
 {
 	    yyMonth = yyvsp[-2].Number;
 	    yyDay = yyvsp[0].Number;
 	;
     break;}
 case 21:
-#line 271 "/u/jimb/ccvs/lib/getdate.y"
+#line 249 "getdate.y"
 {
-	    yyMonth = yyvsp[-4].Number;
-	    yyDay = yyvsp[-2].Number;
-	    yyYear = yyvsp[0].Number;
+	    if (yyvsp[-4].Number >= 100) {
+		yyYear = yyvsp[-4].Number;
+		yyMonth = yyvsp[-2].Number;
+		yyDay = yyvsp[0].Number;
+	    } else {
+		yyMonth = yyvsp[-4].Number;
+		yyDay = yyvsp[-2].Number;
+		yyYear = yyvsp[0].Number;
+	    }
 	;
     break;}
 case 22:
-#line 276 "/u/jimb/ccvs/lib/getdate.y"
+#line 260 "getdate.y"
 {
 	    /* ISO 8601 format.  yyyy-mm-dd.  */
 	    yyYear = yyvsp[-2].Number;
@@ -987,7 +1015,7 @@ case 22:
 	;
     break;}
 case 23:
-#line 282 "/u/jimb/ccvs/lib/getdate.y"
+#line 266 "getdate.y"
 {
 	    /* e.g. 17-JUN-1992.  */
 	    yyDay = yyvsp[-2].Number;
@@ -996,14 +1024,14 @@ case 23:
 	;
     break;}
 case 24:
-#line 288 "/u/jimb/ccvs/lib/getdate.y"
+#line 272 "getdate.y"
 {
 	    yyMonth = yyvsp[-1].Number;
 	    yyDay = yyvsp[0].Number;
 	;
     break;}
 case 25:
-#line 292 "/u/jimb/ccvs/lib/getdate.y"
+#line 276 "getdate.y"
 {
 	    yyMonth = yyvsp[-3].Number;
 	    yyDay = yyvsp[-2].Number;
@@ -1011,14 +1039,14 @@ case 25:
 	;
     break;}
 case 26:
-#line 297 "/u/jimb/ccvs/lib/getdate.y"
+#line 281 "getdate.y"
 {
 	    yyMonth = yyvsp[0].Number;
 	    yyDay = yyvsp[-1].Number;
 	;
     break;}
 case 27:
-#line 301 "/u/jimb/ccvs/lib/getdate.y"
+#line 285 "getdate.y"
 {
 	    yyMonth = yyvsp[-1].Number;
 	    yyDay = yyvsp[-2].Number;
@@ -1026,68 +1054,68 @@ case 27:
 	;
     break;}
 case 28:
-#line 308 "/u/jimb/ccvs/lib/getdate.y"
+#line 292 "getdate.y"
 {
 	    yyRelSeconds = -yyRelSeconds;
 	    yyRelMonth = -yyRelMonth;
 	;
     break;}
 case 30:
-#line 315 "/u/jimb/ccvs/lib/getdate.y"
+#line 299 "getdate.y"
 {
 	    yyRelSeconds += yyvsp[-1].Number * yyvsp[0].Number * 60L;
 	;
     break;}
 case 31:
-#line 318 "/u/jimb/ccvs/lib/getdate.y"
+#line 302 "getdate.y"
 {
 	    yyRelSeconds += yyvsp[-1].Number * yyvsp[0].Number * 60L;
 	;
     break;}
 case 32:
-#line 321 "/u/jimb/ccvs/lib/getdate.y"
+#line 305 "getdate.y"
 {
 	    yyRelSeconds += yyvsp[0].Number * 60L;
 	;
     break;}
 case 33:
-#line 324 "/u/jimb/ccvs/lib/getdate.y"
+#line 308 "getdate.y"
 {
 	    yyRelSeconds += yyvsp[-1].Number;
 	;
     break;}
 case 34:
-#line 327 "/u/jimb/ccvs/lib/getdate.y"
+#line 311 "getdate.y"
 {
 	    yyRelSeconds += yyvsp[-1].Number;
 	;
     break;}
 case 35:
-#line 330 "/u/jimb/ccvs/lib/getdate.y"
+#line 314 "getdate.y"
 {
 	    yyRelSeconds++;
 	;
     break;}
 case 36:
-#line 333 "/u/jimb/ccvs/lib/getdate.y"
+#line 317 "getdate.y"
 {
 	    yyRelMonth += yyvsp[-1].Number * yyvsp[0].Number;
 	;
     break;}
 case 37:
-#line 336 "/u/jimb/ccvs/lib/getdate.y"
+#line 320 "getdate.y"
 {
 	    yyRelMonth += yyvsp[-1].Number * yyvsp[0].Number;
 	;
     break;}
 case 38:
-#line 339 "/u/jimb/ccvs/lib/getdate.y"
+#line 323 "getdate.y"
 {
 	    yyRelMonth += yyvsp[0].Number;
 	;
     break;}
 case 39:
-#line 344 "/u/jimb/ccvs/lib/getdate.y"
+#line 328 "getdate.y"
 {
 	    if (yyHaveTime && yyHaveDate && !yyHaveRel)
 		yyYear = yyvsp[0].Number;
@@ -1115,20 +1143,20 @@ case 39:
 	;
     break;}
 case 40:
-#line 371 "/u/jimb/ccvs/lib/getdate.y"
+#line 355 "getdate.y"
 {
 	    yyval.Meridian = MER24;
 	;
     break;}
 case 41:
-#line 374 "/u/jimb/ccvs/lib/getdate.y"
+#line 358 "getdate.y"
 {
 	    yyval.Meridian = yyvsp[0].Meridian;
 	;
     break;}
 }
    /* the action file gets copied in in place of this dollarsign */
-#line 465 "/usr/local/lib/bison.simple"
+#line 543 "/usr/lib/bison.simple"
 
   yyvsp -= yylen;
   yyssp -= yylen;
@@ -1323,8 +1351,32 @@ yyerrhandle:
 
   yystate = yyn;
   goto yynewstate;
+
+ yyacceptlab:
+  /* YYACCEPT comes here.  */
+  if (yyfree_stacks)
+    {
+      free (yyss);
+      free (yyvs);
+#ifdef YYLSP_NEEDED
+      free (yyls);
+#endif
+    }
+  return 0;
+
+ yyabortlab:
+  /* YYABORT comes here.  */
+  if (yyfree_stacks)
+    {
+      free (yyss);
+      free (yyvs);
+#ifdef YYLSP_NEEDED
+      free (yyls);
+#endif
+    }
+  return 1;
 }
-#line 379 "/u/jimb/ccvs/lib/getdate.y"
+#line 363 "getdate.y"
 
 
 /* Month and day table. */
@@ -1540,10 +1592,14 @@ ToSeconds(Hours, Minutes, Seconds, Meridian)
     case MERam:
 	if (Hours < 1 || Hours > 12)
 	    return -1;
+	if (Hours == 12)
+	    Hours = 0;
 	return (Hours * 60L + Minutes) * 60L + Seconds;
     case MERpm:
 	if (Hours < 1 || Hours > 12)
 	    return -1;
+	if (Hours == 12)
+	    Hours = 0;
 	return ((Hours + 12) * 60L + Minutes) * 60L + Seconds;
     default:
 	abort ();
@@ -1552,6 +1608,10 @@ ToSeconds(Hours, Minutes, Seconds, Meridian)
 }
 
 
+/* Year is either
+   * A negative number, which means to use its absolute value (why?)
+   * A number from 0 to 99, which means a year from 1900 to 1999, or
+   * The actual year (>=100).  */
 static time_t
 Convert(Month, Day, Year, Hours, Minutes, Seconds, Meridian, DSTmode)
     time_t	Month;
@@ -1572,11 +1632,15 @@ Convert(Month, Day, Year, Hours, Minutes, Seconds, Meridian, DSTmode)
 
     if (Year < 0)
 	Year = -Year;
-    if (Year < 100)
+    if (Year < 69)
+	Year += 2000;
+    else if (Year < 100)
 	Year += 1900;
     DaysInMonth[1] = Year % 4 == 0 && (Year % 100 != 0 || Year % 400 == 0)
 		    ? 29 : 28;
-    if (Year < EPOCH || Year > 1999
+    /* Checking for 2038 bogusly assumes that time_t is 32 bits.  But
+       I'm too lazy to try to check for time_t overflow in another way.  */
+    if (Year < EPOCH || Year > 2038
      || Month < 1 || Month > 12
      /* Lint fluff:  "conversion from long may lose accuracy" */
      || Day < 1 || Day > DaysInMonth[(int)--Month])
@@ -1641,7 +1705,7 @@ RelativeMonth(Start, RelMonth)
     if (RelMonth == 0)
 	return 0;
     tm = localtime(&Start);
-    Month = 12 * tm->tm_year + tm->tm_mon + RelMonth;
+    Month = 12 * (tm->tm_year + 1900) + tm->tm_mon + RelMonth;
     Year = Month / 12;
     Month = Month % 12 + 1;
     return DSTcorrect(Start,
@@ -1843,26 +1907,48 @@ get_date(p, now)
     struct timeb	ftz;
     time_t		Start;
     time_t		tod;
+    time_t nowtime;
 
     yyInput = p;
     if (now == NULL) {
+	struct tm *gmt_ptr;
+
         now = &ftz;
-	(void)time(&ftz.time);
+	(void)time (&nowtime);
 
-	if (! (tm = gmtime (&ftz.time)))
-	    return -1;
-	gmt = *tm;	/* Make a copy, in case localtime modifies *tm.  */
+	gmt_ptr = gmtime (&nowtime);
+	if (gmt_ptr != NULL)
+	{
+	    /* Make a copy, in case localtime modifies *tm (I think
+	       that comment now applies to *gmt_ptr, but I am too
+	       lazy to dig into how gmtime and locatime allocate the
+	       structures they return pointers to).  */
+	    gmt = *gmt_ptr;
+	}
 
-	if (! (tm = localtime (&ftz.time)))
+	if (! (tm = localtime (&nowtime)))
 	    return -1;
-	
-	ftz.timezone = difftm (&gmt, tm) / 60;
+
+	if (gmt_ptr != NULL)
+	    ftz.timezone = difftm (&gmt, tm) / 60;
+	else
+	    /* We are on a system like VMS, where the system clock is
+	       in local time and the system has no concept of timezones.
+	       Hopefully we can fake this out (for the case in which the
+	       user specifies no timezone) by just saying the timezone
+	       is zero.  */
+	    ftz.timezone = 0;
+
 	if(tm->tm_isdst)
 	    ftz.timezone += 60;
     }
+    else
+    {
+	nowtime = now->time;
+    }
 
-    tm = localtime(&now->time);
-    yyYear = tm->tm_year;
+    tm = localtime(&nowtime);
+    yyYear = tm->tm_year + 1900;
     yyMonth = tm->tm_mon + 1;
     yyDay = tm->tm_mday;
     yyTimezone = now->timezone;
@@ -1890,7 +1976,7 @@ get_date(p, now)
 	    return -1;
     }
     else {
-	Start = now->time;
+	Start = nowtime;
 	if (!yyHaveRel)
 	    Start -= ((tm->tm_hour * 60L + tm->tm_min) * 60L) + tm->tm_sec;
     }

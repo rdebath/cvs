@@ -9,17 +9,15 @@
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
+   GNU General Public License for more details.  */
 
 /* Written by David MacKenzie <djm@ai.mit.edu> */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+
+#include <sys/types.h>
 
 #include <stdio.h>
 #ifdef STDC_HEADERS
@@ -39,7 +37,7 @@ argmatch (arg, optlist)
      char **optlist;
 {
   int i;			/* Temporary index in OPTLIST. */
-  int arglen;			/* Length of ARG. */
+  size_t arglen;		/* Length of ARG. */
   int matchind = -1;		/* Index of first nonexact match. */
   int ambiguous = 0;		/* If nonzero, multiple nonexact match(es). */
   

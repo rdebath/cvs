@@ -1,14 +1,18 @@
 /* valloc -- return memory aligned to the page size.  */
 
-#ifndef HAVE_GETPAGESIZE
-#define getpagesize() 4096
+#ifdef HAVE_CONFIG_H
+#include "config.h"
 #endif
 
-extern char *malloc ();
+#include "system.h"
 
-char *
+#ifndef HAVE_GETPAGESIZE
+# include "getpagesize.h"
+#endif
+
+void *
 valloc (bytes)
-     int bytes;
+     size_t bytes;
 {
   long pagesize;
   char *ret;

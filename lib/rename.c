@@ -9,11 +9,7 @@
    This program is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program; if not, write to the Free Software
-   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.  */
+   GNU General Public License for more details.  */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -39,7 +35,9 @@ rename (from, to)
 
   if (stat (from, &from_stats) == 0)
     {
-      if (unlink (to) && errno != ENOENT)
+      /* We don't check existence_error because the systems which need it
+	 have rename().  */
+      if (CVS_UNLINK (to) && errno != ENOENT)
 	return -1;
       if ((from_stats.st_mode & S_IFMT) == S_IFDIR)
 	{
@@ -72,7 +70,9 @@ rename (from, to)
 	}
       else
 	{
-	  if (link (from, to) == 0 && (unlink (from) == 0 || errno == ENOENT))
+	  /* We don't check existence_error because the systems which need it
+	     have rename().  */
+	  if (link (from, to) == 0 && (CVS_UNLINK (from) == 0 || errno == ENOENT))
 	    return 0;
 	}
     }

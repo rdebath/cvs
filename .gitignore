@@ -26,11 +26,20 @@ _$*
 *.ln
 core
 # CVS default ignores end
+*.ncb
+*.opt
+*.plg
+Debug
 Makefile
-config.status
-config.log
+Release
+WinDebug
+WinRel
 config.cache
 config.h
-stamp-h
-cvsinit
+config.log
+config.status
 cvs-*.tar.gz
+cvs.spec
+cvsinit
+cvsnt.mdp
+stamp-h1

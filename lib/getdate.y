@@ -4,7 +4,6 @@
 **  at the University of North Carolina at Chapel Hill.  Later tweaked by
 **  a couple of people on Usenet.  Completely overhauled by Rich $alz
 **  <rsalz@bbn.com> and Jim Berets <jberets@bbn.com> in August, 1990;
-**  send any email to Rich.
 **
 **  This grammar has 10 shift/reduce conflicts.
 **
@@ -40,46 +39,11 @@
    Include <sys/time.h> if that will be used.  */
 
 #if	defined(vms)
-
-#include <types.h>
-#include <time.h>
-
-#else
-
-#include <sys/types.h>
-
-#ifdef TIME_WITH_SYS_TIME
-#include <sys/time.h>
-#include <time.h>
-#else
-#ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
-#else
-#include <time.h>
-#endif
-#endif
-
-#ifdef timezone
-#undef timezone /* needed for sgi */
-#endif
-
-#if defined(HAVE_SYS_TIMEB_H)
-#include <sys/timeb.h>
-#else
-/*
-** We use the obsolete `struct timeb' as part of our interface!
-** Since the system doesn't have it, we define it here;
-** our callers must do likewise.
-*/
-struct timeb {
-    time_t		time;		/* Seconds since the epoch	*/
-    unsigned short	millitm;	/* Field not used		*/
-    short		timezone;	/* Minutes west of GMT		*/
-    short		dstflag;	/* Field not used		*/
-};
-#endif /* defined(HAVE_SYS_TIMEB_H) */
-
-#endif	/* defined(vms) */
+# include <types.h>
+#else /* defined(vms) */
+# include <sys/types.h>
+#endif	/* !defined(vms) */
+# include "xtime.h"
 
 #if defined (STDC_HEADERS) || defined (USG)
 #include <string.h>
@@ -92,6 +56,23 @@ struct timeb {
 #define bcopy(from, to, len) memcpy ((to), (from), (len))
 #endif
 
+#if defined (STDC_HEADERS)
+#include <stdlib.h>
+#endif
+
+/* NOTES on rebuilding getdate.c (particularly for inclusion in CVS
+   releases):
+
+   We don't want to mess with all the portability hassles of alloca.
+   In particular, most (all?) versions of bison will use alloca in
+   their parser.  If bison works on your system (e.g. it should work
+   with gcc), then go ahead and use it, but the more general solution
+   is to use byacc instead of bison, which should generate a portable
+   parser.  I played with adding "#define alloca dont_use_alloca", to
+   give an error if the parser generator uses alloca (and thus detect
+   unportable getdate.c's), but that seems to cause as many problems
+   as it solves.  */
+
 extern struct tm	*gmtime();
 extern struct tm	*localtime();
 
@@ -99,10 +80,7 @@ extern struct tm	*localtime();
 #define yylex getdate_yylex
 #define yyerror getdate_yyerror
 
-#if	!defined(lint) && !defined(SABER)
-static char RCS[] = "$CVSid: @(#)getdate.y 1.11 94/09/21 $";
-#endif	/* !defined(lint) && !defined(SABER) */
-
+static int yyparse ();
 static int yylex ();
 static int yyerror ();
 
@@ -269,9 +247,15 @@ date	: tUNUMBER '/' tUNUMBER {
 	    yyDay = $3;
 	}
 	| tUNUMBER '/' tUNUMBER '/' tUNUMBER {
-	    yyMonth = $1;
-	    yyDay = $3;
-	    yyYear = $5;
+	    if ($1 >= 100) {
+		yyYear = $1;
+		yyMonth = $3;
+		yyDay = $5;
+	    } else {
+		yyMonth = $1;
+		yyDay = $3;
+		yyYear = $5;
+	    }
 	}
 	| tUNUMBER tSNUMBER tSNUMBER {
 	    /* ISO 8601 format.  yyyy-mm-dd.  */
@@ -591,10 +575,14 @@ ToSeconds(Hours, Minutes, Seconds, Meridian)
     case MERam:
 	if (Hours < 1 || Hours > 12)
 	    return -1;
+	if (Hours == 12)
+	    Hours = 0;
 	return (Hours * 60L + Minutes) * 60L + Seconds;
     case MERpm:
 	if (Hours < 1 || Hours > 12)
 	    return -1;
+	if (Hours == 12)
+	    Hours = 0;
 	return ((Hours + 12) * 60L + Minutes) * 60L + Seconds;
     default:
 	abort ();
@@ -603,6 +591,10 @@ ToSeconds(Hours, Minutes, Seconds, Meridian)
 }
 
 
+/* Year is either
+   * A negative number, which means to use its absolute value (why?)
+   * A number from 0 to 99, which means a year from 1900 to 1999, or
+   * The actual year (>=100).  */
 static time_t
 Convert(Month, Day, Year, Hours, Minutes, Seconds, Meridian, DSTmode)
     time_t	Month;
@@ -623,11 +615,15 @@ Convert(Month, Day, Year, Hours, Minutes, Seconds, Meridian, DSTmode)
 
     if (Year < 0)
 	Year = -Year;
-    if (Year < 100)
+    if (Year < 69)
+	Year += 2000;
+    else if (Year < 100)
 	Year += 1900;
     DaysInMonth[1] = Year % 4 == 0 && (Year % 100 != 0 || Year % 400 == 0)
 		    ? 29 : 28;
-    if (Year < EPOCH || Year > 1999
+    /* Checking for 2038 bogusly assumes that time_t is 32 bits.  But
+       I'm too lazy to try to check for time_t overflow in another way.  */
+    if (Year < EPOCH || Year > 2038
      || Month < 1 || Month > 12
      /* Lint fluff:  "conversion from long may lose accuracy" */
      || Day < 1 || Day > DaysInMonth[(int)--Month])
@@ -692,7 +688,7 @@ RelativeMonth(Start, RelMonth)
     if (RelMonth == 0)
 	return 0;
     tm = localtime(&Start);
-    Month = 12 * tm->tm_year + tm->tm_mon + RelMonth;
+    Month = 12 * (tm->tm_year + 1900) + tm->tm_mon + RelMonth;
     Year = Month / 12;
     Month = Month % 12 + 1;
     return DSTcorrect(Start,
@@ -894,26 +890,48 @@ get_date(p, now)
     struct timeb	ftz;
     time_t		Start;
     time_t		tod;
+    time_t nowtime;
 
     yyInput = p;
     if (now == NULL) {
+	struct tm *gmt_ptr;
+
         now = &ftz;
-	(void)time(&ftz.time);
+	(void)time (&nowtime);
 
-	if (! (tm = gmtime (&ftz.time)))
-	    return -1;
-	gmt = *tm;	/* Make a copy, in case localtime modifies *tm.  */
+	gmt_ptr = gmtime (&nowtime);
+	if (gmt_ptr != NULL)
+	{
+	    /* Make a copy, in case localtime modifies *tm (I think
+	       that comment now applies to *gmt_ptr, but I am too
+	       lazy to dig into how gmtime and locatime allocate the
+	       structures they return pointers to).  */
+	    gmt = *gmt_ptr;
+	}
 
-	if (! (tm = localtime (&ftz.time)))
+	if (! (tm = localtime (&nowtime)))
 	    return -1;
-	
-	ftz.timezone = difftm (&gmt, tm) / 60;
+
+	if (gmt_ptr != NULL)
+	    ftz.timezone = difftm (&gmt, tm) / 60;
+	else
+	    /* We are on a system like VMS, where the system clock is
+	       in local time and the system has no concept of timezones.
+	       Hopefully we can fake this out (for the case in which the
+	       user specifies no timezone) by just saying the timezone
+	       is zero.  */
+	    ftz.timezone = 0;
+
 	if(tm->tm_isdst)
 	    ftz.timezone += 60;
     }
+    else
+    {
+	nowtime = now->time;
+    }
 
-    tm = localtime(&now->time);
-    yyYear = tm->tm_year;
+    tm = localtime(&nowtime);
+    yyYear = tm->tm_year + 1900;
     yyMonth = tm->tm_mon + 1;
     yyDay = tm->tm_mday;
     yyTimezone = now->timezone;
@@ -941,7 +959,7 @@ get_date(p, now)
 	    return -1;
     }
     else {
-	Start = now->time;
+	Start = nowtime;
 	if (!yyHaveRel)
 	    Start -= ((tm->tm_hour * 60L + tm->tm_min) * 60L) + tm->tm_sec;
     }

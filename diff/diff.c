@@ -1,5 +1,5 @@
-/* GNU DIFF main routine.
-   Copyright (C) 1988, 1989, 1992, 1993, 1994 Free Software Foundation, Inc.
+/* GNU DIFF entry routine.
+   Copyright (C) 1988, 1989, 1992, 1993, 1994, 1997, 1998 Free Software Foundation, Inc.
 
 This file is part of GNU DIFF.
 
@@ -13,9 +13,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with GNU DIFF; see the file COPYING.  If not, write to
-the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
+*/
 
 /* GNU DIFF was written by Mike Haertel, David Hayes,
    Richard Stallman, Len Tower, and Paul Eggert.  */
@@ -34,6 +32,11 @@ the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
 #define GUTTER_WIDTH_MINIMUM 3
 #endif
 
+/* diff.c has a real initialize_main function. */
+#ifdef initialize_main
+#undef initialize_main
+#endif
+
 static char const *filetype PARAMS((struct stat const *));
 static char *option_list PARAMS((char **, int));
 static int add_exclude_file PARAMS((char const *));
@@ -43,9 +46,10 @@ static int specify_format PARAMS((char **, char *));
 static void add_exclude PARAMS((char const *));
 static void add_regexp PARAMS((struct regexp_list **, char const *));
 static void specify_style PARAMS((enum output_style));
-static void try_help PARAMS((char const *));
-static void check_stdout PARAMS((void));
+static int try_help PARAMS((char const *));
+static void check_output PARAMS((FILE *));
 static void usage PARAMS((void));
+static void initialize_main PARAMS((int *, char ***));
 
 /* Nonzero for -r: if comparing two directories,
    compare their common subdirectories recursively.  */
@@ -168,7 +172,7 @@ add_exclude_file (name)
 }
 
 /* The numbers 129- that appear in the fourth element of some entries
-   tell the big switch in `main' how to process those options.  */
+   tell the big switch in `diff_run' how to process those options.  */
 
 static struct option const longopts[] =
 {
@@ -225,24 +229,39 @@ static struct option const longopts[] =
 };
 
 int
-main (argc, argv)
+diff_run (argc, argv, out, callbacks_arg)
      int argc;
      char *argv[];
+     char *out;
+     const struct diff_callbacks *callbacks_arg;
 {
   int val;
   int c;
   int prev = -1;
   int width = DEFAULT_WIDTH;
   int show_c_function = 0;
+  int optind_old;
+  int opened_file = 0;
+
+  callbacks = callbacks_arg;
 
   /* Do our initializations.  */
   initialize_main (&argc, &argv);
-  program_name = argv[0];
-  output_style = OUTPUT_NORMAL;
-  context = -1;
+  optind_old = optind;
+  optind = 0;
+
+  /* Set the jump buffer, so that diff may abort execution without
+     terminating the process. */
+  val = setjmp (diff_abort_buf);
+  if (val != 0)
+    {
+      optind = optind_old;
+      if (opened_file)
+	fclose (outfile);
+      return val;
+    }
 
   /* Decode the options.  */
-
   while ((c = getopt_long (argc, argv,
 			   "0123456789abBcC:dD:efF:hHiI:lL:nNpPqrsS:tTuU:vwW:x:X:y",
 			   longopts, 0)) != EOF)
@@ -332,7 +351,7 @@ main (argc, argv)
 		b += strlen (b) + 1;
 	      }
 	    if (err)
-	      error ("conflicting #ifdef formats", 0, 0);
+	      diff_error ("conflicting #ifdef formats", 0, 0);
 	  }
 	  break;
 
@@ -469,8 +488,15 @@ main (argc, argv)
 	  break;
 
 	case 'v':
-	  printf ("diff - GNU diffutils version %s\n", version_string);
-	  exit (0);
+	  if (callbacks && callbacks->write_stdout)
+	    {
+	      (*callbacks->write_stdout) ("diff - GNU diffutils version ");
+	      (*callbacks->write_stdout) (diff_version_string);
+	      (*callbacks->write_stdout) ("\n");
+	    }
+	  else
+	    printf ("diff - GNU diffutils version %s\n", diff_version_string);
+	  return 0;
 
 	case 'w':
 	  /* Ignore horizontal white space when comparing lines.  */
@@ -518,7 +544,7 @@ main (argc, argv)
 	case 134:
 	  specify_style (OUTPUT_IFDEF);
 	  if (specify_format (&line_format[c - 132], optarg) != 0)
-	    error ("conflicting line format", 0, 0);
+	    diff_error ("conflicting line format", 0, 0);
 	  break;
 
 	case 135:
@@ -528,7 +554,7 @@ main (argc, argv)
 	    for (i = 0; i < sizeof (line_format) / sizeof (*line_format); i++)
 	      err |= specify_format (&line_format[i], optarg);
 	    if (err)
-	      error ("conflicting line format", 0, 0);
+	      diff_error ("conflicting line format", 0, 0);
 	  }
 	  break;
 
@@ -538,7 +564,7 @@ main (argc, argv)
 	case 139:
 	  specify_style (OUTPUT_IFDEF);
 	  if (specify_format (&group_format[c - 136], optarg) != 0)
-	    error ("conflicting group format", 0, 0);
+	    diff_error ("conflicting group format", 0, 0);
 	  break;
 
 	case 140:
@@ -548,27 +574,38 @@ main (argc, argv)
 
 	case 141:
 	  usage ();
-	  check_stdout ();
-	  exit (0);
+	  if (! callbacks || ! callbacks->write_stdout)
+	    check_output (stdout);
+	  return 0;
 
 	case 142:
 	  /* Use binary I/O when reading and writing data.
 	     On Posix hosts, this has no effect.  */
 #if HAVE_SETMODE
 	  binary_I_O = 1;
+#  if 0
+	  /* Because this code is leftover from pre-library days,
+	     there is no way to set stdout back to the default mode
+	     when we are done.  As it turns out, I think the only
+	     parts of CVS that pass out == NULL, and thus cause diff
+	     to write to stdout, are "cvs diff" and "cvs rdiff".  So
+	     I'm not going to worry about this too much yet.  */
 	  setmode (STDOUT_FILENO, O_BINARY);
+#  else
+	  if (out == NULL)
+	    error (0, 0, "warning: did not set stdout to binary mode");
+#  endif
 #endif
 	  break;
 
 	default:
-	  try_help (0);
+	  return try_help (0);
 	}
       prev = c;
     }
 
   if (argc - optind != 2)
-    try_help (argc - optind < 2 ? "missing operand" : "extra operand");
-
+    return try_help (argc - optind < 2 ? "missing operand" : "extra operand");
 
   {
     /*
@@ -628,13 +665,53 @@ main (argc, argv)
 
   switch_string = option_list (argv + 1, optind - 1);
 
+  if (callbacks && callbacks->write_output)
+    {
+      if (out != NULL)
+	{
+	  diff_error ("write callback with output file", 0, 0);
+	  return 2;
+	}
+    }
+  else
+    {
+      if (out == NULL)
+	outfile = stdout;
+      else
+	{
+#if HAVE_SETMODE
+	  /* A diff which is full of ^Z and such isn't going to work
+	     very well in text mode.  */
+	  if (binary_I_O)
+	    outfile = fopen (out, "wb");
+	  else
+#endif
+	    outfile = fopen (out, "w");
+	  if (outfile == NULL)
+	    {
+	      perror_with_name ("could not open output file");
+	      return 2;
+	    }
+	  opened_file = 1;
+	}
+    }
+
   val = compare_files (0, argv[optind], 0, argv[optind + 1], 0);
 
   /* Print any messages that were saved up for last.  */
   print_message_queue ();
 
-  check_stdout ();
-  exit (val);
+  free (switch_string);
+
+  optind = optind_old;
+
+  if (! callbacks || ! callbacks->write_output)
+    check_output (outfile);
+
+  if (opened_file)
+    if (fclose (outfile) != 0)
+	perror_with_name ("close error on output file");
+
   return val;
 }
 
@@ -653,27 +730,28 @@ add_regexp (reglist, pattern)
   r->buf.fastmap = xmalloc (256);
   m = re_compile_pattern (pattern, strlen (pattern), &r->buf);
   if (m != 0)
-    error ("%s: %s", pattern, m);
+    diff_error ("%s: %s", pattern, m);
 
   /* Add to the start of the list, since it's easier than the end.  */
   r->next = *reglist;
   *reglist = r;
 }
 
-static void
+static int
 try_help (reason)
      char const *reason;
 {
   if (reason)
-    error ("%s", reason, 0);
-  error ("Try `%s --help' for more information.", program_name, 0);
-  exit (2);
+    diff_error ("%s", reason, 0);
+  diff_error ("Try `%s --help' for more information.", diff_program_name, 0);
+  return 2;
 }
 
 static void
-check_stdout ()
+check_output (file)
+    FILE *file;
 {
-  if (ferror (stdout) || fclose (stdout) != 0)
+  if (ferror (file) || fflush (file) != 0)
     fatal ("write error");
 }
 
@@ -697,7 +775,7 @@ static char const * const option_help[] = {
 "-e  --ed  Output an ed script.",
 "-n  --rcs  Output an RCS format diff.",
 "-y  --side-by-side  Output in two columns.",
-"  -w NUM  --width=NUM  Output at most NUM (default 130) characters per line.",
+"  -W NUM  --width=NUM  Output at most NUM (default 130) characters per line.",
 "  --left-column  Output only the left column of common lines.",
 "  --suppress-common-lines  Do not output common lines.",
 "-DNAME  --ifdef=NAME  Output merged file to show `#ifdef NAME' diffs.",
@@ -747,10 +825,27 @@ usage ()
 {
   char const * const *p;
 
-  printf ("Usage: %s [OPTION]... FILE1 FILE2\n\n", program_name);
-  for (p = option_help;  *p;  p++)
-    printf ("  %s\n", *p);
-  printf ("\nIf FILE1 or FILE2 is `-', read standard input.\n");
+  if (callbacks && callbacks->write_stdout)
+    {
+      (*callbacks->write_stdout) ("Usage: ");
+      (*callbacks->write_stdout) (diff_program_name);
+      (*callbacks->write_stdout) (" [OPTION]... FILE1 FILE2\n\n");
+      for (p = option_help;  *p;  p++)
+	{
+	  (*callbacks->write_stdout) ("  ");
+	  (*callbacks->write_stdout) (*p);
+	  (*callbacks->write_stdout) ("\n");
+	}
+      (*callbacks->write_stdout)
+	("\nIf FILE1 or FILE2 is `-', read standard input.\n");
+    }
+  else
+    {
+      printf ("Usage: %s [OPTION]... FILE1 FILE2\n\n", diff_program_name);
+      for (p = option_help;  *p;  p++)
+	printf ("  %s\n", *p);
+      printf ("\nIf FILE1 or FILE2 is `-', read standard input.\n");
+    }
 }
 
 static int
@@ -769,7 +864,7 @@ specify_style (style)
 {
   if (output_style != OUTPUT_NORMAL
       && output_style != style)
-    error ("conflicting specifications of output style", 0, 0);
+    diff_error ("conflicting specifications of output style", 0, 0);
   output_style = style;
 }
 
@@ -1051,13 +1146,15 @@ compare_files (dir0, name0, dir1, name1, depth)
 	    failed = 1;
 	  }
       if (inf[1].desc == -2)
-	if (same_files)
-	  inf[1].desc = inf[0].desc;
-	else if ((inf[1].desc = open (inf[1].name, O_RDONLY, 0)) < 0)
-	  {
-	    perror_with_name (inf[1].name);
-	    failed = 1;
-	  }
+	{
+	  if (same_files)
+	    inf[1].desc = inf[0].desc;
+	  else if ((inf[1].desc = open (inf[1].name, O_RDONLY, 0)) < 0)
+	    {
+	      perror_with_name (inf[1].name);
+	      failed = 1;
+	    }
+	}
 
 #if HAVE_SETMODE
       if (binary_I_O)
@@ -1095,7 +1192,7 @@ compare_files (dir0, name0, dir1, name1, depth)
 		 inf[0].name, inf[1].name);
     }
   else
-    fflush (stdout);
+    flush_output ();
 
   if (free0)
     free (free0);
@@ -1103,4 +1200,60 @@ compare_files (dir0, name0, dir1, name1, depth)
     free (free1);
 
   return val;
+}
+
+/* Initialize status variables and flag variables used in libdiff,
+   to permit repeated calls to diff_run. */
+
+static void
+initialize_main (argcp, argvp)
+    int *argcp;
+    char ***argvp;
+{
+  /* These variables really must be reset each time diff_run is called. */
+  output_style = OUTPUT_NORMAL;
+  context = -1;
+  file_label[0] = NULL;
+  file_label[1] = NULL;
+  diff_program_name = (*argvp)[0];
+  outfile = NULL;
+
+  /* Reset these also, just for safety's sake. (If one invocation turns
+     on ignore_case_flag, it must be turned off before diff_run is called
+     again.  But it is possible to make many diffs before encountering
+     such a problem. */
+  recursive = 0;
+  no_discards = 0;
+#if HAVE_SETMODE
+  binary_I_O = 0;
+#endif
+  no_diff_means_no_output = 0;
+  always_text_flag = 0;
+  horizon_lines = 0;
+  ignore_space_change_flag = 0;
+  ignore_all_space_flag = 0;
+  ignore_blank_lines_flag = 0;
+  ignore_some_line_changes = 0;
+  ignore_some_changes = 0;
+  ignore_case_flag = 0;
+  function_regexp_list = NULL;
+  ignore_regexp_list = NULL;
+  no_details_flag = 0;
+  print_file_same_flag = 0;
+  tab_align_flag = 0;
+  tab_expand_flag = 0;
+  dir_start_file = NULL;
+  entire_new_file_flag = 0;
+  unidirectional_new_file_flag = 0;
+  paginate_flag = 0;
+  bzero (group_format, sizeof (group_format));
+  bzero (line_format, sizeof (line_format));
+  sdiff_help_sdiff = 0;
+  sdiff_left_only = 0;
+  sdiff_skip_common_lines = 0;
+  sdiff_half_width = 0;
+  sdiff_column2_offset = 0;
+  switch_string = NULL;
+  heuristic = 0;
+  bzero (files, sizeof (files));
 }

@@ -9,24 +9,22 @@ License, or (at your option) any later version.
 The GNU C Library is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-Library General Public License for more details.
+Library General Public License for more details.  */
 
-You should have received a copy of the GNU Library General Public
-License along with the GNU C Library; see the file COPYING.LIB.  If
-not, write to the Free Software Foundation, Inc., 675 Mass Ave,
-Cambridge, MA 02139, USA.  */
-
-/* Modified slightly by Brian Berliner <berliner@sun.com> for CVS use */
+/* Modified slightly by Brian Berliner <berliner@sun.com> and
+   Jim Blandy <jimb@cyclic.com> for CVS use */
 
 #ifdef HAVE_CONFIG_H
-#include "config.h"
+# include "config.h"
 #endif
+
+#include "system.h"
 
 /* IGNORE(@ */
 /* #include <ansidecl.h> */
 /* @) */
 #include <errno.h>
-#include <fnmatch.h>
+#include "fnmatch.h"
 
 #if !defined(__GNU_LIBRARY__) && !defined(STDC_HEADERS)
 extern int errno;
@@ -70,7 +68,7 @@ fnmatch (pattern, string, flags)
 	case '\\':
 	  if (!(flags & FNM_NOESCAPE))
 	    c = *p++;
-	  if (*n != c)
+	  if (FOLD_FN_CHAR (*n) != FOLD_FN_CHAR (c))
 	    return FNM_NOMATCH;
 	  break;
 	  
@@ -90,7 +88,7 @@ fnmatch (pattern, string, flags)
 	  {
 	    char c1 = (!(flags & FNM_NOESCAPE) && c == '\\') ? *p : c;
 	    for (--p; *n != '\0'; ++n)
-	      if ((c == '[' || *n == c1) &&
+	      if ((c == '[' || FOLD_FN_CHAR (*n) == FOLD_FN_CHAR (c1)) &&
 		  fnmatch(p, n, flags & ~FNM_PERIOD) == 0)
 		return 0;
 	    return FNM_NOMATCH;
@@ -169,7 +167,7 @@ fnmatch (pattern, string, flags)
 	  break;
 	  
 	default:
-	  if (c != *n)
+	  if (FOLD_FN_CHAR (c) != FOLD_FN_CHAR (*n))
 	    return FNM_NOMATCH;
 	}
       

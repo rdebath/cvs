@@ -16,32 +16,6 @@
  */
 
 /*
- * CVS provides the most features when used in conjunction with the Version-5
- * release of RCS.  Thus, it is the default.  This also assumes that GNU diff
- * Version-1.15 is being used as well -- you will have to configure your RCS
- * V5 release separately to make this the case. If you do not have RCS V5 and
- * GNU diff V1.15, comment out this define. You should not try mixing and
- * matching other combinations of these tools.
- */
-#ifndef HAVE_RCS5
-#define	HAVE_RCS5
-#endif
-
-/*
- * If, before installing this version of CVS, you were running RCS V4 AND you
- * are installing this CVS and RCS V5 and GNU diff 1.15 all at the same time,
- * you should turn on the following define.  It only exists to try to do
- * reasonable things with your existing checked out files when you upgrade to
- * RCS V5, since the keyword expansion formats have changed with RCS V5.
- * 
- * If you already have been running with RCS5, or haven't been running with CVS
- * yet at all, or are sticking with RCS V4 for now, leave the commented out.
- */
-#ifndef HAD_RCS4
-/* #define	HAD_RCS4 */
-#endif
-
-/*
  * For portability and heterogeneity reasons, CVS is shipped by default using
  * my own text-file version of the ndbm database library in the src/myndbm.c
  * file.  If you want better performance and are not concerned about
@@ -49,49 +23,6 @@
  */
 #ifndef MY_NDBM
 #define	MY_NDBM
-#endif
-
-/*
- * The "diff" program to execute when creating patch output.  This "diff"
- * must support the "-c" option for context diffing.  Specify a full pathname
- * if your site wants to use a particular diff.  If you are using the GNU
- * version of diff (version 1.15 or later), this should be "diff -a".
- * 
- * NOTE: this program is only used for the ``patch'' sub-command.  The other
- * commands use rcsdiff which will use whatever version of diff was specified
- * when rcsdiff was built on your system.
- */
-
-#ifndef DIFF
-#define	DIFF	"@gdiff_path@"
-#endif
-
-/*
- * The "grep" program to execute when checking to see if a merged file had
- * any conflicts.  This "grep" must support the "-s" option and a standard
- * regular expression as an argument.  Specify a full pathname if your site
- * wants to use a particular grep.
- */
-
-#ifndef GREP
-#define GREP "@ggrep_path@"
-#endif
-
-/*
- * The "rm" program to execute when pruning directories that are not part of
- * a release.  This "rm" must support the "-fr" options.  Specify a full
- * pathname if your site wants to use a particular rm.
- */
-#ifndef RM
-#define	RM	"rm"
-#endif
-
-/*
- * The "sort" program to execute when displaying the module database. Specify
- * a full pathname if your site wants to use a particular sort.
- */
-#ifndef SORT
-#define	SORT	"sort"
 #endif
 
 /*
@@ -103,20 +34,12 @@
 #define PATCH_PROGRAM	"patch"
 #endif
 
-/*
- * By default, RCS programs are executed with the shell or through execlp(),
- * so the user's PATH environment variable is searched.  If you'd like to
- * bind all RCS programs to a certain directory (perhaps one not in most
- * people's PATH) then set the default in RCSBIN_DFLT.  Note that setting
- * this here will cause all RCS programs to be executed from this directory,
- * unless the user overrides the default with the RCSBIN environment variable
- * or the "-b" option to CVS.
- * 
- * This define should be either the empty string ("") or a full pathname to the
- * directory containing all the installed programs from the RCS distribution.
- */
-#ifndef RCSBIN_DFLT
-#define	RCSBIN_DFLT	""
+/* Directory used for storing temporary files, if not overridden by
+   environment variables or the -T global option.  There should be little
+   need to change this (-T is a better mechanism if you need to use a
+   different directory for temporary files).  */
+#ifndef TMPDIR_DFLT
+#define	TMPDIR_DFLT	"c:\\temp"
 #endif
 
 /*
@@ -133,18 +56,49 @@
 #endif
 
 /*
- * The Repository file holds the path to the directory within the source
- * repository that contains the RCS ,v files for each CVS working directory.
- * This path is either a full-path or a path relative to CVSROOT.
- * 
- * The only advantage that I can see to having a relative path is that One can
- * change the physical location of the master source repository, change one's
- * CVSROOT environment variable, and CVS will work without problems.  I
- * recommend using full-paths.
+ * The default umask to use when creating or otherwise setting file or
+ * directory permissions in the repository.  Must be a value in the
+ * range of 0 through 0777.  For example, a value of 002 allows group
+ * rwx access and world rx access; a value of 007 allows group rwx
+ * access but no world access.  This value is overridden by the value
+ * of the CVSUMASK environment variable, which is interpreted as an
+ * octal number.
  */
-#ifndef RELATIVE_REPOS
-/* #define	RELATIVE_REPOS	 */
+#ifndef UMASK_DFLT
+#define	UMASK_DFLT	002
 #endif
+
+/*
+ * The cvs admin command is restricted to the members of the group
+ * CVS_ADMIN_GROUP.  If this group does not exist, all users are
+ * allowed to run cvs admin.  To disable the cvs admin for all users,
+ * create an empty group CVS_ADMIN_GROUP.  To disable access control for
+ * cvs admin, comment out the define below.
+ *
+ * Under Windows NT, this must not be used because it tries to include
+ * <grp.h>
+ */
+#ifdef CVS_ADMIN_GROUP
+/* #define CVS_ADMIN_GROUP "cvsadmin" */
+#endif
+
+/*
+ * The Repository file holds the path to the directory within the
+ * source repository that contains the RCS ,v files for each CVS
+ * working directory.  This path is either a full-path or a path
+ * relative to CVSROOT.
+ * 
+ * The big advantage that I can see to having a relative path is that
+ * one can change the physical location of the master source
+ * repository, change the contents of CVS/Root files in your
+ * checked-out code, and CVS will work without problems.
+ *
+ * Therefore, RELATIVE_REPOS is now the default.  In the future, this
+ * is likely to disappear entirely as a compile-time (or other) option,
+ * so if you have other software which relies on absolute pathnames,
+ * update them.
+ */
+#define RELATIVE_REPOS 1
 
 /*
  * When committing or importing files, you must enter a log message.
@@ -187,20 +141,12 @@
  * so the case in which someone has logged in as root does not occur.
  * Thus, there is no need for this hack.
  */
-#undef	CVS_BADROOT
-
+#undef CVS_BADROOT
 
 /*
- * The "cvs diff" command accepts all the single-character options that GNU
- * diff (1.15) accepts.  Except -D.  GNU diff uses -D as a way to put
- * cpp-style #define's around the output differences.  CVS, by default, uses
- * -D to specify a free-form date (like "cvs diff -D '1 week ago'").  If
- * you would prefer that the -D option of "cvs diff" work like the GNU diff
- * option, then comment out this define.
+ * Yes, we can do the authenticated client.
  */
-#ifndef CVS_DIFFDATE
-#define	CVS_DIFFDATE
-#endif
+#define AUTH_CLIENT_SUPPORT 1
 
 /* End of CVS configuration section */
 
@@ -211,8 +157,3 @@
 #ifndef STDC_HEADERS
 extern void exit ();
 #endif
-
-#ifndef getwd
-extern char *getwd ();
-#endif
-

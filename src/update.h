@@ -1,9 +1,19 @@
-/* Definitions of routines shared between local and client/server
-   "update" code.  */
+/* Declarations for update.c.
 
-/* List of files that we have either processed or are willing to
-   ignore.  Any file not on this list gets a question mark printed.  */
-extern List *ignlist;
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; either version 2, or (at your option)
+   any later version.
 
-extern int
-update_filesdone_proc PROTO((int err, char *repository, char *update_dir));
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.  */
+
+int do_update PROTO((int argc, char *argv[], char *xoptions, char *xtag,
+	       char *xdate, int xforce, int local, int xbuild,
+	       int xaflag, int xprune, int xpipeout, int which,
+	       char *xjoin_rev1, char *xjoin_rev2, char *preload_update_dir,
+	       int xdotemplate));
+int joining PROTO((void));
+extern int isemptydir PROTO ((char *dir, int might_not_exist));
