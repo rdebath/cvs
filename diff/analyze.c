@@ -1,5 +1,5 @@
 /* Analyze file differences for GNU DIFF.
-   Copyright (C) 1988, 1989, 1992, 1993 Free Software Foundation, Inc.
+   Copyright (C) 1988, 1989, 1992, 1993, 1997 Free Software Foundation, Inc.
 
 This file is part of GNU DIFF.
 
@@ -13,9 +13,7 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with GNU DIFF; see the file COPYING.  If not, write to
-the Free Software Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.  */
+*/
 
 /* The basic algorithm is described in:
    "An O(ND) Difference Algorithm and its Variations", Eugene Myers,
@@ -1071,7 +1069,7 @@ diff_2_files (filevec, depth)
 	for (i = 0; i < 2; ++i)
 	  if (filevec[i].missing_newline)
 	    {
-	      error ("No newline at end of file %s", filevec[i].name, "");
+	      diff_error ("No newline at end of file %s", filevec[i].name, "");
 	      changes = 2;
 	    }
     }

@@ -10,19 +10,11 @@
 #include <io.h>
 #include <errno.h>
 
+/* Keep track of whether we've opened a socket so that wnt_shutdown_server
+   can do the correct thing.  We don't want to call shutdown or
+   closesocket on a pipe. */
 
-/* Apply the Winsock shutdown function to a CRT file descriptor.  */
-static void
-shutdown_fd (int fd, int how)
-{
-    SOCKET s;
-    
-    if ((s = _get_osfhandle (fd)) < 0)
-        error (1, errno, "couldn't get socket handle from file descriptor");
-    if (shutdown (s, how) == SOCKET_ERROR)
-        error (1, 0, "couldn't shut down socket half");
-}
-
+static int opened_a_socket = 0;
 
 void
 wnt_start_server (int *tofd, int *fromfd,
@@ -33,21 +25,25 @@ wnt_start_server (int *tofd, int *fromfd,
 {
     char *cvs_server;
     char *command;
-    struct servent *s;
+    struct servent *sptr;
     unsigned short port;
-    int read_fd, write_fd;
-
+    int read_fd;
+    char *portenv;
+    
     if (! (cvs_server = getenv ("CVS_SERVER")))
         cvs_server = "cvs";
-    command = alloca (strlen (cvs_server)
-    		      + strlen (server_cvsroot)
-		      + 50);
+    command = xmalloc (strlen (cvs_server)
+		       + strlen (server_cvsroot)
+		       + 50);
     sprintf (command, "%s -d %s server", cvs_server, server_cvsroot);
 
-    if ((s = getservbyname("shell", "tcp")) == NULL)
-	port = IPPORT_CMDSERVER;
+    portenv = getenv("CVS_RCMD_PORT");
+    if (portenv)
+	port = atoi(portenv);
+    else if ((sptr = getservbyname("shell", "tcp")) != NULL)
+	port = sptr->s_port;
     else
-        port = ntohs (s->s_port);
+	port = IPPORT_CMDSERVER; /* shell/tcp */
 
     read_fd = rcmd (&server_host,
     	            port,
@@ -56,33 +52,35 @@ wnt_start_server (int *tofd, int *fromfd,
 	            command,
 	            0);
     if (read_fd < 0)
-	error (1, errno, "cannot start server via rcmd");
-    
-    /* Split the socket into a reading and a writing half.  */
-    if ((write_fd = dup (read_fd)) < 0)
-        error (1, errno, "duplicating server connection");
-#if 0
-    /* This ought to be legal, since I've duped it, but shutting
-       down the writing end of read_fd seems to terminate the
-       whole connection.  */
-    shutdown_fd (read_fd, 1);
-    shutdown_fd (write_fd, 0);
-#endif
-    
-    *tofd = write_fd;
+	error (1, 0, "cannot start server via rcmd: %s",
+	       SOCK_STRERROR (SOCK_ERRNO));
+
+    *tofd = read_fd;
     *fromfd = read_fd;
+    free (command);
+
+    opened_a_socket = 1;
 }
 
 
 void
 wnt_shutdown_server (int fd)
 {
-    SOCKET s;
-    
-    if ((s = _get_osfhandle (fd)) < 0)
-        error (1, errno, "couldn't get handle of server connection");
-    if (shutdown (s, 2) == SOCKET_ERROR)
-        error (1, 0, "couldn't shutdown server connection");
-    if (closesocket (s) == SOCKET_ERROR)
-        error (1, 0, "couldn't close server connection");
+    if (opened_a_socket)
+    {
+	SOCKET s;
+
+	s = fd;
+	if (shutdown (s, 2) == SOCKET_ERROR)
+	    error (1, 0, "couldn't shutdown server connection: %s",
+		   SOCK_STRERROR (SOCK_ERRNO));
+	if (closesocket (s) == SOCKET_ERROR)
+	    error (1, 0, "couldn't close server connection: %s",
+		   SOCK_STRERROR (SOCK_ERRNO));
+    }
+    else
+    {
+	if (close (fd) < 0)
+	    error (1, errno, "cannot close server connection");
+    }
 }

@@ -9,14 +9,7 @@
     This program is distributed in the hope that it will be useful,
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program; if not, write to the Free Software
-    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
-
-    $Header$
- */
+    GNU General Public License for more details.  */
 
 /* Everything non trivial in this code is from: @(#)msd_dir.c 1.4
    87/11/06.  A public domain implementation of BSD directory routines
@@ -43,7 +36,7 @@ static void free_dircontents (struct _dircontents *);
 
 
 DIR *
-opendir (char *name)
+opendir (const char *name)
 {
   struct _finddata_t find_buf;
   DIR *dirp;
@@ -56,7 +49,7 @@ opendir (char *name)
     name = "";
   else if (*name)
     {
-      char *s;
+      const char *s;
       int l = strlen (name);
 
       s = name + l - 1;
@@ -66,7 +59,7 @@ opendir (char *name)
 
   strcat (strcat (strcpy (name_buf, name), slash), "*.*");
 
-  dirp = (DIR *) malloc (sizeof (DIR));
+  dirp = (DIR *) xmalloc (sizeof (DIR));
   if (dirp == (DIR *)0)
     return (DIR *)0;
 
@@ -81,14 +74,14 @@ opendir (char *name)
 
   do
     {
-      dp = (struct _dircontents *) malloc (sizeof (struct _dircontents));
+      dp = (struct _dircontents *) xmalloc (sizeof (struct _dircontents));
       if (dp == (struct _dircontents *)0)
 	{
 	  free_dircontents (dirp->dd_contents);
 	  return (DIR *)0;
 	}
 
-      dp->_d_entry = malloc (strlen (find_buf.name) + 1);
+      dp->_d_entry = xmalloc (strlen (find_buf.name) + 1);
       if (dp->_d_entry == (char *)0)
 	{
 	  free (dp);
