@@ -26,3 +26,10 @@ _$*
 *.ln
 core
 # CVS default ignores end
+Makefile
+config.status
+config.log
+config.cache
+config.h
+stamp-h
+cvsinit
