@@ -27,8 +27,8 @@ _$*
 core
 # CVS default ignores end
 Makefile
-WinDebug
-WinRel
+Debug
+Release
 config.cache
 config.h
 config.log
@@ -36,19 +36,7 @@ config.status
 cvs-*.spec
 cvs-*.tar.gz
 cvsinit
-cvsnt.mdp
-cvsnt.ncb
-cvsnt.vcp
-cvsnt.opt
-cvsnt.dsw
-cvsnt.plg
-cvsnt4.mak
-cvsnt4.mdp
-cvsnt4.ncb
-diff.pdb
-diff.idb
-diff.pch
-vc50.pdb
-vc50.idb
-vc50.pch
+*.ncb
+*.opt
+*.plg
 stamp-h
