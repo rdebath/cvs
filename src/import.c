@@ -1054,7 +1054,7 @@ add_rcs_file (message, rcs, user, add_vhead, key_opt,
        stat the file before opening it. -twp */
 
     if (CVS_LSTAT (userfile, &sb) < 0)
-	error (1, errno, "cannot lstat %s", userfile);
+	error (1, errno, "cannot lstat %s", user);
     file_type = sb.st_mode & S_IFMT;
 
     fpuser = NULL;
